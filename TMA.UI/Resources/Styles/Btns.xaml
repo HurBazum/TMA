@@ -1,0 +1,84 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Style x:Key="BtnBase" TargetType="{x:Type ButtonBase}">
+        <Setter Property="Width" Value="150" />
+        <Setter Property="Height" Value="50" />
+        <Setter Property="Margin" Value="10, 5" />
+    </Style>
+
+    <Style x:Key="GreenBtn" TargetType="{x:Type Button}" BasedOn="{StaticResource BtnBase}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="brdr"
+                            Background="#176369"
+                            BorderThickness="1"
+                            CornerRadius="5"
+                            Opacity="0.7">
+                        <ContentPresenter x:Name="prsntr" 
+                                          Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="FontWeight" Value="ExtraBlack" />
+                            <Setter Property="FontSize" Value="13" />
+                            <Setter Property="Background" Value="#177899" TargetName="brdr" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="MinOpBtn" TargetType="{x:Type Button}">
+        <Setter Property="Width" Value="100" />
+        <Setter Property="Height" Value="45" />
+        <Setter Property="Margin" Value="10, 5" />
+        <Setter Property="Foreground" Value="#567845" />
+        <Setter Property="FontWeight" Value="ExtraBold" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="brdr"
+                            Background="#589999"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Opacity="0.5">
+                        <ContentPresenter x:Name="cPresenter" 
+                                          Content="{TemplateBinding Content}" 
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#899999" TargetName="brdr" />
+                            <Setter Property="Foreground" Value="Red" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="rBtn" TargetType="{x:Type RadioButton}" BasedOn="{StaticResource BtnBase}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RadioButton}">
+                    <Border x:Name="brdr"
+                            Height="{TemplateBinding}"
+                            Width="{TemplateBinding}">
+                        <ContentPresenter x:Name="cPresenter">
+                            
+                        </ContentPresenter>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

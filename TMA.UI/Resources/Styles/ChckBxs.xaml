@@ -1,0 +1,30 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="ccb" TargetType="{x:Type CheckBox}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+
+                        <Rectangle x:Name="rect" Stroke="Magenta" StrokeThickness="2" RadiusX="8" RadiusY="8" Grid.ColumnSpan="2" Width="30" Height="20" />
+                        <Ellipse x:Name="lips" Stroke="DarkMagenta" Width="12" Height="12 " Fill="DarkMagenta" Grid.Column="0" />
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="CheckBox.IsChecked" Value="True">
+                            <Setter Property="Fill" TargetName="rect" Value="Magenta" />
+                            <Setter Property="Grid.Column" Value="1" TargetName="lips" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+
+        <Style.Triggers>
+        </Style.Triggers>
+    </Style>
+</ResourceDictionary>

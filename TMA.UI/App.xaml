@@ -1,0 +1,38 @@
+﻿<Application x:Class="TMA.UI.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:bld="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:local="clr-namespace:TMA.UI"
+             xmlns:conv="clr-namespace:TMA.UI.Infrastructure.Converters"
+             xmlns:vm="clr-namespace:TMA.UI.ViewModels"
+             xmlns:v="clr-namespace:TMA.UI.Views.Partials">             
+    <Application.Resources>
+        <ResourceDictionary>
+            
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/Btns.xaml" />
+                <ResourceDictionary Source="/Resources/Styles/ChckBxs.xaml" />
+                <ResourceDictionary Source="/Resources/Styles/DPicker.xaml" />
+                <ResourceDictionary Source="/Resources/Styles/TxtBlck.xaml" />
+                <ResourceDictionary Source="/Resources/Styles/Lbls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <conv:PriorityValueConverter x:Key="priorityConverter" />
+            <conv:MonthConverter x:Key="monthsConverter" />
+            <conv:VisibilityConverter x:Key="visibilityConverter" />
+
+            <DataTemplate DataType="{x:Type vm:TaskListViewModel}">
+                <v:TaskListView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:TestViewModel}">
+                <v:TestView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:CreateUpdateViewModel}">
+                <v:TaskView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:FilterViewModel}">
+                <v:FilterView />
+            </DataTemplate>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
