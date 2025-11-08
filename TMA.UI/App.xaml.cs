@@ -3,13 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using TMA.UI.Infrastructure.Stores;
 using TMA.UI.ViewModels;
-using System.IO;
 using TMA.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using TMA.Application;
-using TMA.Application.CommandHandlers;
-using TMA.Application.QueryHandlers;
-using TMA.Application.Queries;
+using Microsoft.Extensions.Hosting;
 
 namespace TMA.UI;
 
@@ -18,51 +14,44 @@ namespace TMA.UI;
 /// </summary>
 public partial class App : System.Windows.Application
 {
-    public static IServiceProvider? Provider { get; private set; }
-    public static IConfiguration? Configuration { get; private set; }
-    protected override void OnStartup(StartupEventArgs e)
+    private static IHost? _host;
+    public static IHost Host => _host ??= Program.CreateHostBuilder(Environment.GetCommandLineArgs()).Build();
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        var serviceCollection = new ServiceCollection();
-        var b = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, true);
 
-        Configuration = b.Build();
+        var host = Host;
 
-        ConfigureServices(serviceCollection, Configuration);
+        await host.StartAsync();
 
-        Provider = serviceCollection.BuildServiceProvider();
-
-        var nav = Provider.GetRequiredService<INavigationStore>();
+        var nav = host.Services.GetRequiredService<INavigationStore>();
         
+        var defaultVm = host.Services.GetRequiredService<TaskListViewModel>();
         //
-        nav.Next(Provider.GetRequiredService<TaskListViewModel>());
+        nav.Next(defaultVm);
+
 
         var main = new MainWindow
         {
-            DataContext = Provider.GetRequiredService<MainViewModel>()
+            DataContext = Host.Services.GetRequiredService<MainViewModel>()
         };
 
         main.Show();
     }
-    private static void ConfigureServices(IServiceCollection services, IConfiguration configuration) => services
-        .AddDbContext<AppDbContext>(o => o.UseSqlite(configuration.GetConnectionString("Default")))
-        .AddTransient<ITaskRepository, TaskRepository>()
-        .AddSingleton<INavigationStore, NavigationStore>()
-        .AddTransient<AddTaskCommandHandler>()
-        .AddTransient<CompleteTaskCommandHandler>()
-        .AddTransient<RenameTaskCommandHandler>()
-        .AddTransient<ReprioritizeTaskCommandHandler>()
-        .AddTransient<RescheduleTaskCommandHandler>()
-        .AddTransient<GetTasksQueryHandler>()
-        .AddTransient<GetByIdQueryHandler>()
-        .AddTransient<FilterTaskQuery>()
-        .AddTransient<FilterTaskQueryHandler>()
-        .AddTransient<ITaskService<TaskDto>, TaskService>()
-        .AddSingleton<MainViewModel>()
-        .AddTransient<FilterViewModel>()
-        .AddTransient<TaskListViewModel>()
-        .AddTransient<CreateUpdateViewModel>()
-        .AddTransient<TestViewModel>();        
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        base.OnExit(e);
+
+        var host = Host;
+
+        host.StopAsync();
+
+        host.Dispose();
+    }
+
+    public static void ConfigureServices(IServiceCollection services, IConfiguration configuration) => services
+        .ConfigureData(configuration)
+        .ConfigureApplication()
+        .ConfigureUI();
 }

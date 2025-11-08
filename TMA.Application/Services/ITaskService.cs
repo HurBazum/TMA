@@ -1,4 +1,7 @@
-﻿namespace TMA.Infrastructure;
+﻿using TMA.Application.Others;
+using TMA.Application.Dtos;
+
+namespace TMA.Application.Services;
 
 public interface ITaskService<T> where T : class, new()
 {

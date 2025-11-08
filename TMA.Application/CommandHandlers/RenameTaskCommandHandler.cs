@@ -1,21 +1,25 @@
 ﻿using TMA.Application.Commands;
+using TMA.Application.MediatorFolder;
+using TMA.Application.Dtos;
+using TMA.Application.Others;
 
-namespace TMA.Application.CommandHandlers
+namespace TMA.Application.CommandHandlers;
+
+public class RenameTaskCommandHandler(ITaskRepository repository) : ICommandHandler<RenameTaskCommand, TaskDto>
 {
-    public class RenameTaskCommandHandler(ITaskRepository repository)
+    private readonly ITaskRepository _repository = repository;
+
+    public async Task<TaskDto> HandleAsync(RenameTaskCommand command)
     {
-        private readonly ITaskRepository _repository = repository;
+        var task = await _repository.GetByIdAsync(command.Id);
 
-        public async Task Handle(RenameTaskCommand command)
+        if(task != null)
         {
-            var task = await _repository.GetByIdAsync(command.Id);
+            task.Rename(command.NewTitle);
 
-            if(task != null)
-            {
-                task.Rename(command.NewTitle);
-
-                await _repository.UpdateTaskAsync(task);
-            }
+            await _repository.UpdateTaskAsync(task);
         }
+
+        return Transformer.ToDto(task);
     }
 }

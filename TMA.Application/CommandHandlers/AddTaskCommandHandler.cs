@@ -1,18 +1,21 @@
 ﻿using TMA.Application.Commands;
+using TMA.Application.MediatorFolder;
 using TMA.Domain;
-using TMA.Domain.VOs;
+using TMA.Application.Dtos;
+using TMA.Application.Others;
 
 namespace TMA.Application.CommandHandlers;
 
-public class AddTaskCommandHandler(ITaskRepository taskRepository)
+public class AddTaskCommandHandler(ITaskRepository taskRepository) : ICommandHandler<AddTaskCommand, TaskDto>
 {
     private readonly ITaskRepository _taskRepository = taskRepository;
 
-    public async Task<TaskId> Handle(AddTaskCommand command)
+    public async Task<TaskDto> HandleAsync(AddTaskCommand command)
     {
-        var task = TaskEntity.Create(command.TaskTitle, command.Deadline, command.Priority);
-        await _taskRepository.AddTaskAsync(task);
+        var task = TaskEntity.Create(command.Title, command.Deadline, command.Priority);
+        
+        var t = await _taskRepository.AddTaskAsync(task);
 
-        return task.Id;
+        return Transformer.ToDto(t);
     }
 }

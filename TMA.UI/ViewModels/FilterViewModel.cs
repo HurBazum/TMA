@@ -1,10 +1,10 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Windows;
 using System.Windows.Input;
-using TMA.Infrastructure;
+using TMA.Application.Others;
+using TMA.Application.Dtos;
+using TMA.Application.Services;
 using TMA.UI.Infrastructure.Commands;
 using TMA.UI.Infrastructure.Commands.Base;
 using TMA.UI.Infrastructure.EventArguments;
@@ -16,7 +16,7 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
 {
     private readonly ITaskService<TaskDto> _taskService = taskService;
 
-    public event EventHandler<FilterDoneEventArgs> SearchIsDone;
+    public event EventHandler<FilterDoneEventArgs>? SearchIsDone;
 
     #region properties
 
@@ -44,7 +44,7 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
             Set(ref _title, value);
             if(value != null)
             {
-                OnAddedFilterValue(Title);
+                OnAddedFilterValue(Title!);
             }
         }
     }
@@ -164,40 +164,40 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
 
     private Expression<Action<object, string, object>> FilterInitializer()
     {
-        ParameterExpression dto = System.Linq.Expressions.Expression.Parameter(typeof(object), "d");
-        ParameterExpression propName = System.Linq.Expressions.Expression.Parameter(typeof(string), "n");
-        ParameterExpression propValue = System.Linq.Expressions.Expression.Parameter(typeof(object), "v");
+        ParameterExpression dto = Expression.Parameter(typeof(object), "d");
+        ParameterExpression propName = Expression.Parameter(typeof(string), "n");
+        ParameterExpression propValue = Expression.Parameter(typeof(object), "v");
 
-        MethodCallExpression getDtoTypeCall = System.Linq.Expressions.Expression.Call(dto, typeof(object).GetMethod(nameof(object.GetType))!);
-        MethodCallExpression getDtoPropertyCall = System.Linq.Expressions.Expression.Call(getDtoTypeCall, 
+        MethodCallExpression getDtoTypeCall = Expression.Call(dto, typeof(object).GetMethod(nameof(object.GetType))!);
+        MethodCallExpression getDtoPropertyCall = Expression.Call(getDtoTypeCall, 
             typeof(Type).GetMethod(nameof(Type.GetProperty), new[] { typeof(string) })!, propName);
 
-        MemberExpression propertyType = System.Linq.Expressions.Expression.Property(getDtoPropertyCall, nameof(PropertyInfo.PropertyType));
+        MemberExpression propertyType = Expression.Property(getDtoPropertyCall, nameof(PropertyInfo.PropertyType));
 
-        MethodCallExpression getUnderlyingTypeCall = System.Linq.Expressions.Expression.Call(typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType), new[] { typeof(Type) })!
+        MethodCallExpression getUnderlyingTypeCall = Expression.Call(typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType), new[] { typeof(Type) })!
             , propertyType);
         
-        BinaryExpression checkFoNull = System.Linq.Expressions.Expression.Equal(getUnderlyingTypeCall, System.Linq.Expressions.Expression.Constant(null, typeof(Type)));
+        BinaryExpression checkFoNull = Expression.Equal(getUnderlyingTypeCall, Expression.Constant(null, typeof(Type)));
 
-        ConditionalExpression getRealType = System.Linq.Expressions.Expression.Condition(checkFoNull, propertyType, getUnderlyingTypeCall);
+        ConditionalExpression getRealType = Expression.Condition(checkFoNull, propertyType, getUnderlyingTypeCall);
 
-        MemberExpression isEnum = System.Linq.Expressions.Expression.Property(getRealType, nameof(Type.IsEnum));
+        MemberExpression isEnum = Expression.Property(getRealType, nameof(Type.IsEnum));
 
-        UnaryExpression convertTo = System.Linq.Expressions.Expression.Convert(propValue, typeof(string));
+        UnaryExpression convertTo = Expression.Convert(propValue, typeof(string));
 
-        MethodCallExpression parsedEnum = System.Linq.Expressions.Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), new[] { typeof(Type), typeof(string) })!,
+        MethodCallExpression parsedEnum = Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), new[] { typeof(Type), typeof(string) })!,
             getRealType, convertTo);
 
-        UnaryExpression convertedEnum = System.Linq.Expressions.Expression.Convert(parsedEnum, typeof(object));
+        UnaryExpression convertedEnum = Expression.Convert(parsedEnum, typeof(object));
 
-        MethodCallExpression parsedOther = System.Linq.Expressions.Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) })!,
+        MethodCallExpression parsedOther = Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) })!,
             convertTo, propertyType);
 
-        ConditionalExpression condition = System.Linq.Expressions.Expression.Condition(isEnum, convertedEnum, parsedOther);
+        ConditionalExpression condition = Expression.Condition(isEnum, convertedEnum, parsedOther);
 
-        MethodCallExpression setValueCall = System.Linq.Expressions.Expression.Call(getDtoPropertyCall, typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue)
+        MethodCallExpression setValueCall = Expression.Call(getDtoPropertyCall, typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue)
             , new[] { typeof(object), typeof(object) })!, dto, condition);
 
-        return System.Linq.Expressions.Expression.Lambda<Action<object, string, object>>(setValueCall, dto, propName, propValue);
+        return Expression.Lambda<Action<object, string, object>>(setValueCall, dto, propName, propValue);
     }
 }

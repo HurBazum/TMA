@@ -10,11 +10,14 @@
         <ResourceDictionary>
             
             <ResourceDictionary.MergedDictionaries>
+
                 <ResourceDictionary Source="/Resources/Styles/Btns.xaml" />
                 <ResourceDictionary Source="/Resources/Styles/ChckBxs.xaml" />
                 <ResourceDictionary Source="/Resources/Styles/DPicker.xaml" />
                 <ResourceDictionary Source="/Resources/Styles/TxtBlck.xaml" />
                 <ResourceDictionary Source="/Resources/Styles/Lbls.xaml" />
+                <ResourceDictionary Source="/Resources/Styles/TxtBxsDictionary.xaml" />
+                
             </ResourceDictionary.MergedDictionaries>
 
             <conv:PriorityValueConverter x:Key="priorityConverter" />

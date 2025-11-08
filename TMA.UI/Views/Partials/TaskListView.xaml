@@ -9,22 +9,23 @@
              xmlns:v="clr-namespace:TMA.UI.Views.Partials"
              mc:Ignorable="d" 
              d:DesignHeight="610" d:DesignWidth="800" d:Background="Azure"
-             Height="570"
-             >
-    <Grid Background="#055987" x:Name="MainGrid">
+             Height="570">
+    <Grid Background="#FF76767F" x:Name="MainGrid">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition />
             <RowDefinition Height="90" />
         </Grid.RowDefinitions>
 
-        <ContentControl Grid.Row="0" VerticalAlignment="Top" Content="{Binding FilterViewModel}" />
-        
-        <ListBox ItemsSource="{Binding TVMs}"
-                 SelectedItem="{Binding SelectedTask}"
-                 Grid.Row="0" Height="320" Panel.ZIndex="-1" Margin="0 45 0 0">
+        <ContentControl Grid.Row="0" 
+                        VerticalAlignment="Top" 
+                        Content="{Binding FilterViewModel}" />
+
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding TVMs}"
+                 SelectedItem="{Binding SelectedTask}">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type models:TaskViewModel}">
-
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition />
@@ -65,8 +66,7 @@
                                                         BorderBrush="{TemplateBinding Background}"
                                                         CornerRadius="3"
                                                         Background="{TemplateBinding Background}">
-                                                    <ContentPresenter x:Name="cPresenter"
-                                                                      />
+                                                    <ContentPresenter x:Name="cPresenter" />
                                                 </Border>
 
                                                 <ControlTemplate.Triggers>
@@ -80,10 +80,12 @@
                                 </Style>
                             </StackPanel.Resources>
 
-                            <RadioButton IsChecked="{Binding PDictionary[0], Mode=TwoWay}" 
+                            <RadioButton IsChecked="{Binding PDictionary[0], Mode=TwoWay}"
                                          Background="#FF71AF60" />
-                            <RadioButton IsChecked="{Binding PDictionary[1], Mode=TwoWay}" Background="#FFDAD322" />
-                            <RadioButton IsChecked="{Binding PDictionary[2], Mode=TwoWay}" Background="#FFC14848" />
+                            <RadioButton IsChecked="{Binding PDictionary[1], Mode=TwoWay}"
+                                         Background="#FFDAD322" />
+                            <RadioButton IsChecked="{Binding PDictionary[2], Mode=TwoWay}"
+                                         Background="#FFC14848" />
                         </StackPanel>
 
                         <TextBlock Text="{Binding Title}"
@@ -95,34 +97,37 @@
                         <StackPanel Grid.Row="1" Grid.Column="3" 
                                     VerticalAlignment="Center"
                                     HorizontalAlignment="Center">
-                            <CheckBox Style="{StaticResource ccb}"   
-                                  IsChecked="{Binding Completed, Mode=OneWay}"
-                                  Command="{Binding DataContext.CompleteTaskCmd, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                  CommandParameter="{Binding Mode=OneWay}"
-                                  />
+                            <CheckBox Style="{StaticResource ccb}"
+                                      IsChecked="{Binding Completed, Mode=OneWay}"
+                                      Command="{Binding DataContext.CompleteTaskCmd, 
+                                                        RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                      CommandParameter="{Binding Mode=OneWay}" />
                         </StackPanel>
                         <Button Content="Update"
                                 Style="{StaticResource MinOpBtn}"
-                                Command="{Binding DataContext.UpdateTaskCmd, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                Command="{Binding DataContext.UpdateTaskCmd, 
+                                                    RelativeSource={RelativeSource AncestorType=ListBox}}"
                                 CommandParameter="{Binding Mode=OneWay}" 
                                 Grid.Column="3" Grid.Row="2" />
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
+
         </ListBox>
 
         <StackPanel Orientation="Horizontal"
                     VerticalAlignment="Top"
                     HorizontalAlignment="Center"
-                    Margin="12" Grid.Row="1" >
+                    Margin="12" Grid.Row="2" >
             <StackPanel.Resources>
                 <Style TargetType="{x:Type RadioButton}">
                     <Setter Property="Command" Value="{Binding SetFilterValueCmd}" />
                 </Style>
             </StackPanel.Resources>
             <Button Content="Create task"
-                        Style="{StaticResource GreenBtn}"
-                        Command="{Binding CreateTVMCmd}" RenderTransformOrigin="0.478,-0.862" />
+                    Style="{StaticResource MinOpBtn}"
+                    Command="{Binding CreateTVMCmd}" 
+                    RenderTransformOrigin="0.478,-0.862" />
         </StackPanel>
         <Popup IsOpen="{Binding HasMessage}"
                PlacementTarget="{Binding ElementName=MainGrid}"

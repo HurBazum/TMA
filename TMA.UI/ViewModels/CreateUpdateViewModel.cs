@@ -1,17 +1,19 @@
 ﻿using System.Windows.Input;
-using TMA.Infrastructure;
+using TMA.Application.Services;
+using TMA.Application.Dtos;
 using TMA.UI.Infrastructure.Commands;
 using TMA.UI.Infrastructure.Commands.Base;
 using TMA.UI.Infrastructure.EventArguments;
 using TMA.UI.Infrastructure.Stores;
 using TMA.UI.ViewModels.Base;
 using TMA.Shared;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TMA.UI.ViewModels;
 
-public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigationStore navigationStore) : ViewModelBase
+public class CreateUpdateViewModel(IServiceScopeFactory scopeFactory, INavigationStore navigationStore) : ViewModelBase
 {
-    private readonly ITaskService<TaskDto> _taskService = taskService;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly INavigationStore _navigationStore = navigationStore;
 
     public event EventHandler<CreateUpdateEventArgs>? OperationDone;
@@ -158,12 +160,16 @@ public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigatio
     {
         TaskDto dto = new() { Title = TaskTitle, Priority = Priority };
 
+        using IServiceScope scope = _scopeFactory.CreateScope();
+
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+
         if(IsLimited)
         {
             dto.DeadlineDate = Deadline;
         }
 
-        var result = await _taskService.AddAsync(dto);
+        var result = await service.AddAsync(dto);
         
         if(result.Value != null)
         {
@@ -187,19 +193,12 @@ public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigatio
         return true;
     }
     
-    public void SetProperties(object? sender, CreateUpdateEventArgs e)
-     {
+    public void SetProperties(CreateUpdateEventArgs e)
+    {
         Id = e.Dto.Id;
         TaskTitle = e.Dto.Title;
         Priority = e.Dto.Priority;
-        if(e.Dto.DeadlineDate is not null)
-        {
-            Deadline = e.Dto.DeadlineDate;
-        }
-        else
-        {
-            Deadline = DateTime.Now;
-        }
+        Deadline = e.Dto.DeadlineDate ?? DateTime.Now;
     }    
 
     private async Task UpdateTaskExecuteAsync(object? parameter)
@@ -212,7 +211,11 @@ public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigatio
             Priority = Priority
         };
 
-        var result = await _taskService.UpdateAsync(dto);
+        using IServiceScope scope = _scopeFactory.CreateScope();
+
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+
+        var result = await service.UpdateAsync(dto);
 
         if(result.Value != null)
         {

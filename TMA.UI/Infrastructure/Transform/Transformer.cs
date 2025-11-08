@@ -1,7 +1,5 @@
-﻿using TMA.Infrastructure;
-using TMA.UI.Models;
-using TMA.Shared;
-using System.Windows.Input;
+﻿using TMA.UI.Models;
+using TMA.Application.Dtos;
 
 namespace TMA.UI.Infrastructure.Transform;
 

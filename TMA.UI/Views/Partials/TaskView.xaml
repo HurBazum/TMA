@@ -8,7 +8,7 @@
               xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Background="#055987" x:Name="MainGrid">
+    <Grid Background="#FF76767F" x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition />
             <RowDefinition />
@@ -25,13 +25,16 @@
             <ColumnDefinition />
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
-        <Button Style="{StaticResource MinOpBtn}"
+        <Button Content="Back"
+                Style="{StaticResource MinOpBtn}"
                 Command="{Binding GoBackCmd}" />
         <TextBox x:Name="titleTxt"
                  Text="{Binding TaskTitle, UpdateSourceTrigger=PropertyChanged}"
-                 Padding="10" MaxLines="2"
-                 Height="100" FontSize="16" FontWeight="DemiBold"
-                 Grid.Column="1" Grid.ColumnSpan="4"
+                 Style="{StaticResource bigBox}"
+                 MaxLines="2"
+                 Height="70" 
+                 Grid.Column="1" 
+                 Grid.ColumnSpan="4"
                  Grid.Row="1" />
         <StackPanel VerticalAlignment="Center"
                     Grid.ColumnSpan="2"
@@ -57,7 +60,7 @@
                     Grid.Row="3"
                     Margin="0 0 0 0">
             <StackPanel.Resources>
-                <Style TargetType="Button" BasedOn="{StaticResource GreenBtn}">
+                <Style TargetType="Button" BasedOn="{StaticResource MinOpBtn}">
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsUpdate}" Value="True">
                             <Setter Property="Command" Value="{Binding UpdateTaskCmd}" />
@@ -85,15 +88,17 @@
                            FontWeight="ExtraBold"
                            Padding="10 0 5 0"/>
                 <CheckBox Style="{StaticResource ccb}"
-                    IsChecked="{Binding IsLimited}" />
+                          IsChecked="{Binding IsLimited}" />
             </StackPanel>
         <StackPanel Orientation="Horizontal"
-                            HorizontalAlignment="Center">
+                    HorizontalAlignment="Center">
                 <StackPanel.Resources>
                     <Style TargetType="{x:Type Button}">
-                        <Setter Property="Height" Value="15" />
+                        <Setter Property="Height" Value="20" />
                         <Setter Property="Width" Value="26" />
                         <Setter Property="Background" Value="#FF7EC1DE" />
+                        <Setter Property="Content" Value="▼" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
                     </Style>
                     
                     <Style TargetType="TextBlock">

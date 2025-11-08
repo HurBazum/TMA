@@ -1,12 +1,15 @@
 ﻿using TMA.Application.Commands;
+using TMA.Application.Dtos;
+using TMA.Application.MediatorFolder;
+using TMA.Application.Others;
 
 namespace TMA.Application.CommandHandlers
 {
-    public class RescheduleTaskCommandHandler(ITaskRepository repository)
+    public class RescheduleTaskCommandHandler(ITaskRepository repository) : ICommandHandler<RescheduleTaskCommand, TaskDto>
     {
         private readonly ITaskRepository _repository = repository;
 
-        public async Task Handle(RescheduleTaskCommand command)
+        public async Task<TaskDto> HandleAsync(RescheduleTaskCommand command) 
         {
             var task = await _repository.GetByIdAsync(command.Id);
 
@@ -16,6 +19,8 @@ namespace TMA.Application.CommandHandlers
 
                 await _repository.UpdateTaskAsync(task);
             }
+
+            return Transformer.ToDto(task);
         }
     }
 }

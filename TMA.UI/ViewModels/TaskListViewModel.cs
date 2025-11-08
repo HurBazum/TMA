@@ -4,12 +4,13 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Windows.Input;
 using System.Windows.Threading;
-using TMA.Infrastructure;
+using TMA.Application.Dtos;
+using TMA.Application.Others;
+using TMA.Application.Services;
 using TMA.UI.Infrastructure.Commands;
 using TMA.UI.Infrastructure.Commands.Base;
 using TMA.UI.Infrastructure.EventArguments;
 using TMA.UI.Infrastructure.Stores;
-using TMA.UI.Infrastructure.Transform;
 using TMA.UI.Models;
 using TMA.UI.ViewModels.Base;
 
@@ -18,18 +19,23 @@ namespace TMA.UI.ViewModels;
 public class TaskListViewModel : ViewModelBase
 {
     private readonly INavigationStore _navigationStore;
-    private readonly ITaskService<TaskDto> _taskService;
+    private readonly IServiceScopeFactory _scopeFactory;
     public FilterViewModel FilterViewModel { get; }
-    public event EventHandler<CreateUpdateEventArgs>? UpdateTask;
+    public event Action<CreateUpdateEventArgs>? UpdateTask;
 
-    public TaskListViewModel(INavigationStore navigationStore, ITaskService<TaskDto> taskService)
+    public TaskListViewModel(
+        INavigationStore navigationStore,
+        FilterViewModel filterViewModel,
+        IServiceScopeFactory scopeFactory)
     {
         _navigationStore = navigationStore;
-        _taskService = taskService;
-        FilterViewModel = App.Provider.GetRequiredService<FilterViewModel>();
+        _scopeFactory = scopeFactory;
+        FilterViewModel = filterViewModel;
         FilterViewModel.SearchIsDone += ChangeCollection;
         Dispatcher.CurrentDispatcher.BeginInvoke(() => InitializeCollection());
     }
+
+    #region properties
 
     private string? _message;
     public string? Message
@@ -62,6 +68,7 @@ public class TaskListViewModel : ViewModelBase
 
     public ObservableCollection<TaskViewModel> TVMs { get; set; } = [];
 
+    #endregion
 
     #region cmds
 
@@ -102,7 +109,7 @@ public class TaskListViewModel : ViewModelBase
 
     private void CreateTVMCmdExecuted(object? parameter)
     {
-        var nextPage = App.Provider.GetRequiredService<CreateUpdateViewModel>();
+        var nextPage = App.Host.Services.GetRequiredService<CreateUpdateViewModel>();
 
         nextPage.OperationDone += OnTaskOperationDone;
 
@@ -135,11 +142,13 @@ public class TaskListViewModel : ViewModelBase
             }
         }
 
-        var response = await _taskService.FilterTaskAsync(taskDto);
+        using IServiceScope scope = _scopeFactory.CreateScope();
 
-        Message = response.Message;
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
 
-        HasMessage = true;
+        BaseResponse<List<TaskDto>> response = await service.FilterTaskAsync(taskDto);
+
+        ShowMessage(response.Message);
 
         var filteredTVMs = response.Value;
 
@@ -147,7 +156,7 @@ public class TaskListViewModel : ViewModelBase
 
         foreach(var filteredTvm in filteredTVMs)
         {
-            newTVMS.Add(Transformer.ToModel(filteredTvm));
+            newTVMS.Add(Infrastructure.Transform.Transformer.ToModel(filteredTvm));
         }
 
         TVMs = new(newTVMS);
@@ -158,11 +167,10 @@ public class TaskListViewModel : ViewModelBase
 
     private void OnTaskOperationDone(object? sender, CreateUpdateEventArgs e)
     {
-        Message = e.Message;
-        HasMessage = true;
+        ShowMessage(e.Message);
         if(e.OperationName == "Add")
         {
-            TVMs.Add(Transformer.ToModel(e.Dto));
+            TVMs.Add(Infrastructure.Transform.Transformer.ToModel(e.Dto));
         }
         if(e.OperationName == "Update")
         {
@@ -195,15 +203,15 @@ public class TaskListViewModel : ViewModelBase
     {
         var tvm = parameter as TaskViewModel;
 
-        var nextPage = App.Provider.GetRequiredService<CreateUpdateViewModel>();
+        var nextPage = App.Host.Services.GetRequiredService<CreateUpdateViewModel>();
 
         nextPage.OperationDone += OnTaskOperationDone;
 
         UpdateTask += nextPage.SetProperties;
 
-        UpdateTask?.Invoke(this, new () 
+        UpdateTask?.Invoke(new () 
         {            
-            Dto = Transformer.ToDto(tvm)   
+            Dto = Infrastructure.Transform.Transformer.ToDto(tvm)   
         });
 
         _navigationStore.Next(nextPage);
@@ -229,103 +237,120 @@ public class TaskListViewModel : ViewModelBase
 
         tvm.Completed = true;
 
-        var dto = Transformer.ToDto(tvm);
+        var dto = Infrastructure.Transform.Transformer.ToDto(tvm);
 
-        var result = await _taskService.UpdateAsync(dto);
+        using IServiceScope scope = _scopeFactory.CreateScope();
 
-        Message = result.Message;
-        HasMessage = true;
+        var service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+
+        var result = await service.UpdateAsync(dto);
+
+        ShowMessage(result.Message);
     }
 
     #endregion
 
+
+    #region prvt methods
+
     private void ChangeCollection(object? sender, FilterDoneEventArgs e)
     {
-        var tvms = Transformer.ToModel(e.Value);
+        var tvms = Infrastructure.Transform.Transformer.ToModel(e.Value);
 
         TVMs = new(tvms);
         OnPropertyChanged(nameof(TVMs));
-        Message = e.Message;
-        HasMessage = true;
+        ShowMessage(e.Message);
     }
 
     private async Task InitializeCollection()
     {
-        var result = await _taskService.GetAllAsync();
+        using IServiceScope scope = _scopeFactory.CreateScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+
+        var result = await service.GetAllAsync();
 
         if(result.Value != null)
         {
             foreach(var item in result.Value)
             { 
-                TVMs.Add(Transformer.ToModel(item));
+                TVMs.Add(Infrastructure.Transform.Transformer.ToModel(item));
             }
         }
     }
 
     private Expression<Action<object, string, object>> SetFilterProperty()
     {
-        ParameterExpression obj = System.Linq.Expressions.Expression.Parameter(typeof(object), "p");
-        ParameterExpression propName = System.Linq.Expressions.Expression.Parameter(typeof(string), "n");
-        ParameterExpression newValue = System.Linq.Expressions.Expression.Parameter(typeof(object), "v");
+        ParameterExpression obj = Expression.Parameter(typeof(object), "p");
+        ParameterExpression propName = Expression.Parameter(typeof(string), "n");
+        ParameterExpression newValue = Expression.Parameter(typeof(object), "v");
 
         // p.GetType()
         MethodCallExpression getTypeCall =
-            System.Linq.Expressions.Expression.Call(obj, typeof(object).GetMethod(nameof(object.GetType))!);
+            Expression.Call(obj, typeof(object).GetMethod(nameof(object.GetType))!);
 
         // p.GetType().GetProperty(n)
         MethodCallExpression getPropertyCall =
-            System.Linq.Expressions.Expression.Call(getTypeCall,
+            Expression.Call(getTypeCall,
                 typeof(Type).GetMethod(nameof(Type.GetProperty), new[] { typeof(string) })!,
                 propName);
 
         // property.PropertyType
         MemberExpression propertyType =
-            System.Linq.Expressions.Expression.Property(getPropertyCall, nameof(PropertyInfo.PropertyType));
+            Expression.Property(getPropertyCall, nameof(PropertyInfo.PropertyType));
 
         // Nullable.GetUnderlyingType(property.PropertyType)
         MethodInfo getUnderlyingType = typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType))!;
         MethodCallExpression underlyingTypeCall =
-            System.Linq.Expressions.Expression.Call(getUnderlyingType, propertyType);
+            Expression.Call(getUnderlyingType, propertyType);
 
         // underlyingType == null ? propertyType : underlyingType
         BinaryExpression underlyingIsNull =
-             System.Linq.Expressions.Expression.Equal(underlyingTypeCall, System.Linq.Expressions.Expression.Constant(null, typeof(Type)));
-        System.Linq.Expressions.Expression realTargetType =
-            System.Linq.Expressions.Expression.Condition(underlyingIsNull, propertyType, underlyingTypeCall);
+             Expression.Equal(underlyingTypeCall, Expression.Constant(null, typeof(Type)));
+        Expression realTargetType =
+            Expression.Condition(underlyingIsNull, propertyType, underlyingTypeCall);
 
         // realTargetType.IsEnum
         MemberExpression isEnum =
-            System.Linq.Expressions.Expression.Property(realTargetType, nameof(Type.IsEnum));
+            Expression.Property(realTargetType, nameof(Type.IsEnum));
 
         // (string)v
         UnaryExpression valueToString =
-            System.Linq.Expressions.Expression.Convert(newValue, typeof(string));
+            Expression.Convert(newValue, typeof(string));
 
         // Enum.Parse(realTargetType, (string)v)
         MethodCallExpression parsedEnum =
-            System.Linq.Expressions.Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), new[] { typeof(Type), typeof(string) })!,
+            Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), new[] { typeof(Type), typeof(string) })!,
                             realTargetType, valueToString);
 
         // (PropertyType)Enum.Parse(...)
-        System.Linq.Expressions.Expression convertedEnum =
-            System.Linq.Expressions.Expression.Convert(parsedEnum, typeof(object));
+        Expression convertedEnum =
+            Expression.Convert(parsedEnum, typeof(object));
 
         // Convert.ChangeType(v, propertyType)
         MethodCallExpression convertedOther =
-            System.Linq.Expressions.Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) })!,
+            Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) })!,
                             newValue, propertyType);
 
         // isEnum ? convertedEnum : convertedOther
         ConditionalExpression valueExpression =
-            System.Linq.Expressions.Expression.Condition(isEnum, convertedEnum, convertedOther);
+            Expression.Condition(isEnum, convertedEnum, convertedOther);
 
         // property.SetValue(p, valueExpression)
         MethodCallExpression setValueCall =
-            System.Linq.Expressions.Expression.Call(getPropertyCall,
+            Expression.Call(getPropertyCall,
                 typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue),
                                                new[] { typeof(object), typeof(object) })!,
                 obj, valueExpression);
 
-        return System.Linq.Expressions.Expression.Lambda<Action<object, string, object>>(setValueCall, obj, propName, newValue);
+        return Expression.Lambda<Action<object, string, object>>(setValueCall, obj, propName, newValue);
     }
+
+    private void ShowMessage(string message)
+    {
+        Message = message;
+        HasMessage = true;
+    }
+
+    #endregion
 }

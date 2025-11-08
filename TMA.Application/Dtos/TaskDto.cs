@@ -1,6 +1,6 @@
 ﻿using TMA.Shared;
 
-namespace TMA.Infrastructure;
+namespace TMA.Application.Dtos;
 
 public class TaskDto
 {

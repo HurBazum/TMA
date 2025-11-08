@@ -1,6 +1,6 @@
 ﻿using TMA.Shared;
 
-namespace TMA.Infrastructure;
+namespace TMA.Application.Dtos;
 
 public class FilterDto
 {
@@ -8,7 +8,7 @@ public class FilterDto
     public Shared.TaskStatus? Status { get; set; }
     public string? Title { get; set; }
 
-    // not implemented
+    // in progress
     public DateTime? To { get; set; }
     public DateTime? From { get; set; }
 
