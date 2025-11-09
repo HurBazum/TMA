@@ -12,7 +12,8 @@ public static class Transformer
         DeadlineDate = entity.Deadline,
         Priority = entity.Priority,
         CreatedDate = entity.CreatedDate,
-        Completed = entity.Status == Shared.TaskStatus.Completed
+        Completed = entity.Status == Shared.TaskStatus.Completed,
+        Status = entity.Status
     };
 
     public static List<TaskDto> ToDtos(IEnumerable<TaskEntity> entities) => Enumerable.Select(entities, ToDto).ToList();

@@ -24,9 +24,13 @@ public class TaskEntity
 
     public void Reprioritize(TaskPriority priority)
     {
-        if (priority != Priority)
+        if(priority != Priority)
         {
             Priority = priority;
+        }
+        else
+        {
+            return;
         }
     }
 
@@ -49,6 +53,18 @@ public class TaskEntity
         if(Status != Shared.TaskStatus.Completed)
         {
             Status = Shared.TaskStatus.Completed;
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    public void Expire()
+    {
+        if(Status == Shared.TaskStatus.Pending)
+        {
+            Status = Shared.TaskStatus.Expired;
         }
         else
         {

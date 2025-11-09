@@ -55,7 +55,10 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
             var originTask = await _mediator.SendASync(idQuery);
 
             var id = idQuery.Id;
-
+            if(dto.Status == Shared.TaskStatus.Expired)
+            {
+                await _mediator.SendASync(new ExpireTaskCommand(id));
+            }
             if(originTask.Completed == false && dto.Completed == true)
             {
                 await _mediator.SendASync(new CompleteTaskCommand(id));
@@ -91,7 +94,7 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
         try
         {
             // priority, status, title, to, from
-            var tasks = await _mediator.SendASync(new FilterTaskQuery(dto.Priority, dto.Status, dto.Title));
+            var tasks = await _mediator.SendASync(new FilterTaskQuery(dto.Priority, dto.Status, dto.Title, dto.To, dto.From));
 
             return BaseResponse<List<TaskDto>>.Success(tasks, $"Task was filtered successfuly");
         }

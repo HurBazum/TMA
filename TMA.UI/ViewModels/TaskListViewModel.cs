@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using TMA.Application.Dtos;
 using TMA.Application.Others;
+using TMA.Application.Others.Args;
 using TMA.Application.Services;
 using TMA.UI.Infrastructure.Commands;
 using TMA.UI.Infrastructure.Commands.Base;
@@ -18,21 +19,30 @@ namespace TMA.UI.ViewModels;
 
 public class TaskListViewModel : ViewModelBase
 {
+    private CancellationTokenSource _cts = new();
+
     private readonly INavigationStore _navigationStore;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly CheckTaskService _checkTaskService;
     public FilterViewModel FilterViewModel { get; }
     public event Action<CreateUpdateEventArgs>? UpdateTask;
 
     public TaskListViewModel(
         INavigationStore navigationStore,
         FilterViewModel filterViewModel,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        CheckTaskService checkTaskService)
     {
         _navigationStore = navigationStore;
         _scopeFactory = scopeFactory;
+
         FilterViewModel = filterViewModel;
         FilterViewModel.SearchIsDone += ChangeCollection;
         Dispatcher.CurrentDispatcher.BeginInvoke(() => InitializeCollection());
+
+        _checkTaskService = checkTaskService;
+        _checkTaskService.ExpiredTask += DeleteExpiredTVMs;
+        Dispatcher.CurrentDispatcher.InvokeAsync(() => _checkTaskService.CheckTasksDeadlineAsync(_cts.Token));
     }
 
     #region properties
@@ -253,6 +263,16 @@ public class TaskListViewModel : ViewModelBase
 
     #region prvt methods
 
+    public void DeleteExpiredTVMs(object? sender, ExpiredTaskEventArgs e)
+    {
+        TaskViewModel tvm = TVMs.Single(x => x.Id == e.DtoId);
+
+        TVMs.Remove(tvm);
+        OnPropertyChanged(nameof(TVMs));
+
+        ShowMessage(e.Message);
+    }
+
     private void ChangeCollection(object? sender, FilterDoneEventArgs e)
     {
         var tvms = Infrastructure.Transform.Transformer.ToModel(e.Value);
@@ -264,11 +284,16 @@ public class TaskListViewModel : ViewModelBase
 
     private async Task InitializeCollection()
     {
+        FilterDto filter = new()
+        {
+            Status = Shared.TaskStatus.Pending
+        };
+
         using IServiceScope scope = _scopeFactory.CreateScope();
 
         var service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
 
-        var result = await service.GetAllAsync();
+        var result = await service.FilterTaskAsync(filter);
 
         if(result.Value != null)
         {

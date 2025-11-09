@@ -6,6 +6,7 @@ using TMA.UI.ViewModels;
 using TMA.Infrastructure;
 using TMA.Application;
 using Microsoft.Extensions.Hosting;
+using TMA.Application.Services;
 
 namespace TMA.UI;
 
@@ -14,6 +15,7 @@ namespace TMA.UI;
 /// </summary>
 public partial class App : System.Windows.Application
 {
+    private CancellationTokenSource _cancellationTokenSource = new();
     private static IHost? _host;
     public static IHost Host => _host ??= Program.CreateHostBuilder(Environment.GetCommandLineArgs()).Build();
     protected override async void OnStartup(StartupEventArgs e)
@@ -37,10 +39,16 @@ public partial class App : System.Windows.Application
         };
 
         main.Show();
+
+        //var background = host.Services.GetRequiredService<CheckTaskService>();
+
+        //await Task.Run(() => background.CheckTasksDeadlineAsync(_cancellationTokenSource.Token));
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _cancellationTokenSource.Cancel();
+
         base.OnExit(e);
 
         var host = Host;

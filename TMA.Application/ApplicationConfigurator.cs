@@ -19,11 +19,13 @@ public static class ApplicationConfigurator
         .AddScoped<ICommandHandler<RenameTaskCommand, TaskDto>, RenameTaskCommandHandler>()
         .AddScoped<ICommandHandler<ReprioritizeTaskCommand, TaskDto>, ReprioritizeTaskCommandHandler>()
         .AddScoped<ICommandHandler<RescheduleTaskCommand, TaskDto>, RescheduleTaskCommandHandler>()
+        .AddScoped<ICommandHandler<ExpireTaskCommand, TaskDto>, ExpireTaskCommandHandler>()
 
         .AddScoped<IQueryHandler<FilterTaskQuery, List<TaskDto>>, FilterTaskQueryHandler>()
         .AddScoped<IQueryHandler<GetByIdQuery, TaskDto>, GetByIdQueryHandler>()
         .AddScoped<IQueryHandler<GetByTitleQuery, TaskDto>, GetByTitleQueryHandler>()
         .AddScoped<IQueryHandler<GetTasksQuery, List<TaskDto>>, GetTasksQueryHandler>()
 
-        .AddScoped<ITaskService<TaskDto>, TaskService>();
+        .AddScoped<ITaskService<TaskDto>, TaskService>()
+        .AddSingleton<CheckTaskService>();
 }

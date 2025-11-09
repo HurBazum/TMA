@@ -53,6 +53,7 @@ public class FilterTaskQueryHandler(ITaskRepository repository) : IQueryHandler<
                 "Status" => new TaskStatusSpecification((Shared.TaskStatus)piValue),
                 "Priority" => new TaskPrioritySpecification((Shared.TaskPriority)piValue),
                 "Title" => new TaskTitleSpecification(new(piValue.ToString())),
+                "To" => new TaskDeadlineSpecification((DateTime)piValue),
                 _ => throw new NotImplementedException()
             };
 
