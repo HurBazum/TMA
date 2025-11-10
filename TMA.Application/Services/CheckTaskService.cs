@@ -12,12 +12,14 @@ public class CheckTaskService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMediator _mediator;
+    private readonly IUnitOfWork _unitOfWork;
     public EventHandler<ExpiredTaskEventArgs>? ExpiredTask;
 
-    public CheckTaskService(IServiceScopeFactory scopeFactory, IMediator mediator)
+    public CheckTaskService(IServiceScopeFactory scopeFactory, IMediator mediator, IUnitOfWork unitOfWork)
     {
         _scopeFactory = scopeFactory;
         _mediator = mediator;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task CheckTasksDeadlineAsync(CancellationToken token)
@@ -32,40 +34,31 @@ public class CheckTaskService
                 To = DateTime.UtcNow
             };
 
-            List<TaskDto> readyToExpiring = await _mediator.SendASync(ftq);
+            List<TaskDto> readyToExpiring = await _mediator.SendAsync(ftq);
 
-            if(readyToExpiring is null)
+            if(readyToExpiring is null || readyToExpiring.Count == 0)
             {
-                return;
+                await Task.Delay(60000, token);
+                continue;
             }
             else
             {
-                foreach(var taskDto in readyToExpiring)
+                foreach(TaskDto taskDto in readyToExpiring)
                 {
-                    if(taskDto.DeadlineDate is not null)
+                    TaskId id = new()
                     {
-                        TaskId id = new()
-                        {
-                            Value = Guid.Parse(taskDto.Id)
-                        };
+                        Value = Guid.Parse(taskDto.Id)
+                    };
 
-                        ExpireTaskCommand etc = new(id);
+                    ExpireTaskCommand etc = new(id);
 
-                        TaskDto expiredDto = await _mediator.SendASync(etc);
+                    TaskDto expiredDto = await _mediator.SendAsync(etc);
 
-                        if(expiredDto is not null)
-                        {
-                            OnExpiredTask(expiredDto.Id);
-                        }
-                    }
-                    else
-                    {
-                        continue;
-                    }
+                    await _unitOfWork.SaveAsync();
+
+                    OnExpiredTask(expiredDto.Id);                    
                 }
             }
-
-            await Task.Delay(60000, token);
         }
     }
 

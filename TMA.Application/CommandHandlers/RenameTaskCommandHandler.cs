@@ -1,7 +1,8 @@
 ﻿using TMA.Application.Commands;
-using TMA.Application.MediatorFolder;
 using TMA.Application.Dtos;
+using TMA.Application.MediatorFolder;
 using TMA.Application.Others;
+using TMA.Application.Others.Exceptions;
 
 namespace TMA.Application.CommandHandlers;
 
@@ -11,14 +12,12 @@ public class RenameTaskCommandHandler(ITaskRepository repository) : ICommandHand
 
     public async Task<TaskDto> HandleAsync(RenameTaskCommand command)
     {
-        var task = await _repository.GetByIdAsync(command.Id);
+        var task = await _repository.GetByIdAsync(command.Id)
+            ?? throw new TaskWasnotFoundException($"Задача с id={command.Id.Value} не найдена");
+                
+        task.Rename(command.NewTitle);
 
-        if(task != null)
-        {
-            task.Rename(command.NewTitle);
-
-            await _repository.UpdateTaskAsync(task);
-        }
+        task = await _repository.UpdateTaskAsync(task);
 
         return Transformer.ToDto(task);
     }

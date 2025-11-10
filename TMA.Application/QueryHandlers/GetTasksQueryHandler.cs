@@ -14,7 +14,7 @@ public class GetTasksQueryHandler(ITaskRepository taskRepository) : IQueryHandle
         var tasks = _taskRepository.GetAllAsync();
 
         var dtos = Transformer.ToDtos(tasks);
-
+        
         return await Task.FromResult(dtos);
     }
 }

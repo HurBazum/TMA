@@ -16,7 +16,7 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
         {
             AddTaskCommand atc = new(new(dto.Title), dto.DeadlineDate, dto.Priority);
 
-            TaskDto result = await _mediator.SendASync(atc);
+            TaskDto result = await _mediator.SendAsync(atc);
 
             await _uow.SaveAsync();
 
@@ -33,7 +33,7 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
     {
         try
         {
-            var result = await _mediator.SendASync(new GetTasksQuery());
+            var result = await _mediator.SendAsync(new GetTasksQuery());
 
             return BaseResponse<List<TaskDto>>.Success(result, $"Таски успешно получены");
         }
@@ -49,35 +49,32 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
         {
             GetByIdQuery idQuery = new()
             {
-                Id = new() { Value = Guid.Parse(dto.Id) }
+                Id = new() 
+                { 
+                    Value = Guid.Parse(dto.Id) 
+                }
             };
 
-            var originTask = await _mediator.SendASync(idQuery);
+            var originTask = await _mediator.SendAsync(idQuery);
 
             var id = idQuery.Id;
-            if(dto.Status == Shared.TaskStatus.Expired)
+
+            if(dto.Status == Shared.TaskStatus.Completed)
             {
-                await _mediator.SendASync(new ExpireTaskCommand(id));
-            }
-            if(originTask.Completed == false && dto.Completed == true)
+                await _mediator.SendAsync(new CompleteTaskCommand(id));
+            } 
+            if(!Equals(originTask.Title, dto.Title))
             {
-                await _mediator.SendASync(new CompleteTaskCommand(id));
+                await _mediator.SendAsync(new RenameTaskCommand(id, new(dto.Title)));
             }
-            else
+            if(originTask.DeadlineDate != dto.DeadlineDate)
             {
-                if(!Equals(originTask.Title, dto.Title))
-                {
-                    await _mediator.SendASync(new RenameTaskCommand(id, new(dto.Title)));
-                }
-                if(originTask.DeadlineDate != dto.DeadlineDate)
-                {
-                    await _mediator.SendASync(new RescheduleTaskCommand(id, dto.DeadlineDate));
-                }
-                if(originTask.Priority != dto.Priority)
-                {
-                    await _mediator.SendASync(new ReprioritizeTaskCommand(id, dto.Priority));
-                }
+                await _mediator.SendAsync(new RescheduleTaskCommand(id, dto.DeadlineDate));
             }
+            if(originTask.Priority != dto.Priority)
+            {
+                await _mediator.SendAsync(new ReprioritizeTaskCommand(id, dto.Priority));
+            } 
 
             await _uow.SaveAsync();
 
@@ -94,7 +91,7 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
         try
         {
             // priority, status, title, to, from
-            var tasks = await _mediator.SendASync(new FilterTaskQuery(dto.Priority, dto.Status, dto.Title, dto.To, dto.From));
+            List<TaskDto>? tasks = await _mediator.SendAsync(new FilterTaskQuery(dto.Priority, dto.Status, dto.Title, dto.To, dto.From));
 
             return BaseResponse<List<TaskDto>>.Success(tasks, $"Task was filtered successfuly");
         }

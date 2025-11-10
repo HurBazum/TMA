@@ -9,7 +9,7 @@
              xmlns:v="clr-namespace:TMA.UI.Views.Partials"
              mc:Ignorable="d" 
              d:DesignHeight="610" d:DesignWidth="800" d:Background="Azure"
-             Height="570">
+             Height="570" >
     <Grid Background="#FF76767F" x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -26,7 +26,7 @@
                  SelectedItem="{Binding SelectedTask}">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type models:TaskViewModel}">
-                    <Grid>
+                    <Grid Background="#FFBEBEC5">
                         <Grid.RowDefinitions>
                             <RowDefinition />
                             <RowDefinition MinHeight="50" />
@@ -81,11 +81,11 @@
                             </StackPanel.Resources>
 
                             <RadioButton IsChecked="{Binding PDictionary[0], Mode=TwoWay}"
-                                         Background="#FF71AF60" />
-                            <RadioButton IsChecked="{Binding PDictionary[1], Mode=TwoWay}"
-                                         Background="#FFDAD322" />
+                                         Background="Green" />
+                            <RadioButton IsChecked="{Binding PDictionary[1], Mode=TwoWay}" 
+                                         Background="Yellow" />
                             <RadioButton IsChecked="{Binding PDictionary[2], Mode=TwoWay}"
-                                         Background="#FFC14848" />
+                                         Background="Red" />
                         </StackPanel>
 
                         <TextBlock Text="{Binding Title}"

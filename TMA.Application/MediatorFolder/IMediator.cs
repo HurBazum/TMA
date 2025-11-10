@@ -2,5 +2,5 @@
 
 public interface IMediator
 {
-    Task<TResponse> SendASync<TResponse>(IRequest<TResponse> request);
+    Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request);
 }

@@ -8,7 +8,7 @@ namespace TMA.Application.MediatorFolder;
 public class Mediator(IServiceProvider provider) : IMediator
 {
     private readonly IServiceProvider _provider = provider;
-    public async Task<TResponse> SendASync<TResponse>(IRequest<TResponse> request)
+    public async Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
     {
         Type? type = null;
 

@@ -6,7 +6,6 @@ using TMA.UI.ViewModels;
 using TMA.Infrastructure;
 using TMA.Application;
 using Microsoft.Extensions.Hosting;
-using TMA.Application.Services;
 
 namespace TMA.UI;
 
@@ -32,17 +31,12 @@ public partial class App : System.Windows.Application
         //
         nav.Next(defaultVm);
 
-
         var main = new MainWindow
         {
             DataContext = Host.Services.GetRequiredService<MainViewModel>()
         };
 
         main.Show();
-
-        //var background = host.Services.GetRequiredService<CheckTaskService>();
-
-        //await Task.Run(() => background.CheckTasksDeadlineAsync(_cancellationTokenSource.Token));
     }
 
     protected override void OnExit(ExitEventArgs e)

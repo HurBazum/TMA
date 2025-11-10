@@ -74,7 +74,7 @@ public class CreateUpdateViewModel(IServiceScopeFactory scopeFactory, INavigatio
         Priority
     }
 
-    public ICommand ChangeValueCmd => _changeValueCmd ?? new LambdaCommand(ChangeValueCmdExecute, CanChangeValueCmdExecute);    
+    public ICommand ChangeValueCmd => _changeValueCmd ??= new LambdaCommand(ChangeValueCmdExecute, CanChangeValueCmdExecute);    
     public CmdAdapter AddTaskCmdAdapt => new(_addTaskCmd);
     private CmdAdapter UpdateTaskAsyncCmdAdapt => new(_updateTaskAsyncCmd);
 

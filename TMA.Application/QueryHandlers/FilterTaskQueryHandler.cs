@@ -24,7 +24,7 @@ public class FilterTaskQueryHandler(ITaskRepository repository) : IQueryHandler<
             To = query.To
         };
 
-        var filterExpression = CreateGeneralExpression(domainFilter).Compile();
+        Func<TaskEntity, bool> filterExpression = CreateGeneralExpression(domainFilter).Compile();
 
         IQueryable<TaskEntity?> result = _repository.GetAllAsync();
 
@@ -52,7 +52,7 @@ public class FilterTaskQueryHandler(ITaskRepository repository) : IQueryHandler<
             {
                 "Status" => new TaskStatusSpecification((Shared.TaskStatus)piValue),
                 "Priority" => new TaskPrioritySpecification((Shared.TaskPriority)piValue),
-                "Title" => new TaskTitleSpecification(new(piValue.ToString())),
+                "Title" => new TaskTitleSpecification(new(piValue.ToString()!)),
                 "To" => new TaskDeadlineSpecification((DateTime)piValue),
                 _ => throw new NotImplementedException()
             };
@@ -72,7 +72,7 @@ public class FilterTaskQueryHandler(ITaskRepository repository) : IQueryHandler<
     }
 
     // ISpecification
-    private Expression<Func<TaskEntity, bool>> CreateFilterExpression(DomainFilterTaskQuery query)
+    /*private Expression<Func<TaskEntity, bool>> CreateFilterExpression(DomainFilterTaskQuery query)
     {
         ParameterExpression entityParameter = Expression.Parameter(typeof(TaskEntity), "e");
 
@@ -106,5 +106,5 @@ public class FilterTaskQueryHandler(ITaskRepository repository) : IQueryHandler<
         var finalExpression = expressions.Aggregate(Expression.AndAlso);
 
         return Expression.Lambda<Func<TaskEntity, bool>>(finalExpression, entityParameter);
-    }
+    }*/
 }

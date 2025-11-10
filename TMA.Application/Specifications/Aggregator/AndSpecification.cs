@@ -20,8 +20,6 @@ internal class AndSpecification<T>(params ISpecification<T>[] specifications) : 
             visitedBodies.Add(visitor.Visit(expr.Body));
         }
 
-        
-
         Expression combined = visitedBodies.Aggregate(Expression.AndAlso) ?? Expression.Empty();
 
         return Expression.Lambda<Func<T, bool>>(combined, param);

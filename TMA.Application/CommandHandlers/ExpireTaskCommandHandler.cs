@@ -11,12 +11,14 @@ internal class ExpireTaskCommandHandler(ITaskRepository repository) : ICommandHa
 {
     private readonly ITaskRepository _taskRepository = repository;
 
-    public async Task<TaskDto> HandleAsync(ExpireTaskCommand etc)
+    public async Task<TaskDto> HandleAsync(ExpireTaskCommand command)
     {
-        TaskEntity task = await _taskRepository.GetByIdAsync(etc.Id)
-            ?? throw new TaskWasnotFoundException($"Задача с id={etc.Id.Value} не найдена");
+        TaskEntity task = await _taskRepository.GetByIdAsync(command.Id)
+            ?? throw new TaskWasnotFoundException($"Задача с id={command.Id.Value} не найдена");
 
         task.Expire();
+
+        task = await _taskRepository.UpdateTaskAsync(task);
 
         return Transformer.ToDto(task);
     }
