@@ -11,5 +11,5 @@ public class TaskDto
     public DateTime CreatedDate { get; init; }
     public DateTime? DeadlineDate { get; set; }
     public TaskPriority Priority { get; set; }
-    public Dictionary<string, bool> Updates { get; set; } = new();
+    public Dictionary<string, bool> Updates { get; set; } = [];
 }

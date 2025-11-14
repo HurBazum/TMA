@@ -13,7 +13,7 @@ public static class Transformer
         CreatedDate = tvm.CreatedDate,
         DeadlineDate = tvm.Deadline,
         Completed = tvm.Completed,
-        
+        Status = tvm.Status
     };
 
     public static TaskViewModel ToModel(TaskDto dto) => new()
@@ -23,7 +23,8 @@ public static class Transformer
         Priority = dto.Priority,
         CreatedDate = dto.CreatedDate,
         Deadline = dto.DeadlineDate,
-        Completed = dto.Completed
+        Completed = dto.Completed,
+        Status = dto.Status
     };
 
     public static IEnumerable<TaskViewModel> ToModel(IEnumerable<TaskDto> dtos) => Enumerable.Select(dtos, x => ToModel(x));

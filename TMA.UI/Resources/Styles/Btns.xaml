@@ -64,10 +64,41 @@
                             <Setter Property="Background" Value="#899999" TargetName="brdr" />
                             <Setter Property="Foreground" Value="#FF922929" />
                             <Setter Property="FontWeight" Value="ExtraBold" />
+                            <Setter Property="Effect" TargetName="brdr">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="8" 
+                                                      ShadowDepth="4"
+                                                      Color="Black"
+                                                      Opacity="0.6" />
+                                </Setter.Value>
+                            </Setter>                            
                         </Trigger>
+
+                        <Trigger Property="IsMouseOver" Value="False">
+                            <Setter Property="Effect" TargetName="brdr">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="5" 
+                                                      ShadowDepth="3"
+                                                      Color="Black"
+                                                      Opacity="0.3" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        
                     </ControlTemplate.Triggers>
+
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
+
+    <Style x:Key="mnBtn" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+        <Setter Property="Width" Value="100" />
+        <Setter Property="Height" Value="45" />
+        <Setter Property="Margin" Value="10, 5" />
+        <Setter Property="Foreground" Value="#FFD7E0EA" />
+        <Setter Property="FontWeight" Value="DemiBold" />
+        <Setter Property="FontSize" Value="17" />
+    </Style>
+    
 </ResourceDictionary>

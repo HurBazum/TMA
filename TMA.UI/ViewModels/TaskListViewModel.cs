@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using MaterialDesignThemes.Wpf;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -19,13 +20,15 @@ namespace TMA.UI.ViewModels;
 
 public class TaskListViewModel : ViewModelBase
 {
-    private CancellationTokenSource _cts = new();
+    private readonly CancellationTokenSource _cts = new();
 
     private readonly INavigationStore _navigationStore;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly CheckTaskService _checkTaskService;
     public FilterViewModel FilterViewModel { get; }
     public event Action<CreateUpdateEventArgs>? UpdateTask;
+
+    public ISnackbarMessageQueue MessageQueue { get; set; } = new SnackbarMessageQueue();
 
     public TaskListViewModel(
         INavigationStore navigationStore,
@@ -42,7 +45,7 @@ public class TaskListViewModel : ViewModelBase
 
         _checkTaskService = checkTaskService;
         _checkTaskService.ExpiredTask += DeleteExpiredTVMs;
-        Dispatcher.CurrentDispatcher.InvokeAsync(() => _checkTaskService.CheckTasksDeadlineAsync(_cts.Token));
+        Dispatcher.CurrentDispatcher.InvokeAsync(() => _checkTaskService.CheckTasksDeadlineAsync(_cts.Token));        
     }
 
     #region properties
@@ -83,17 +86,15 @@ public class TaskListViewModel : ViewModelBase
     #region cmds
 
 
-    private IAsyncCommand filterTaskAsyncCmd => new AsyncCommand(FilterTVMCmdExecute, CanFilterTVMCmdExecute);
+    private IAsyncCommand FilterTaskAsyncCmd => new AsyncCommand(FilterTVMCmdExecute, CanFilterTVMCmdExecute);
 
-    private ICommand? _createTVMCmd;
-    public ICommand CreateTVMCmd => _createTVMCmd ?? new LambdaCommand(CreateTVMCmdExecuted, CanCreateTVMCmdExecute);
+    public ICommand CreateTVMCmd => new LambdaCommand(CreateTVMCmdExecuted, CanCreateTVMCmdExecute);
 
-    private CmdAdapter FilterTMVAdapt => new(filterTaskAsyncCmd);
+    private CmdAdapter FilterTMVAdapt => new(FilterTaskAsyncCmd);
 
     public LambdaCommand FilterTVMCmd => new(FilterTMVAdapt.Execute, FilterTMVAdapt.CanExecute);
 
-    private ICommand? _setFilterValueCmd;
-    public ICommand SetFilterValueCmd => _setFilterValueCmd ?? new LambdaCommand(SetFilterValueCmdExecute, parameter => true);
+    public ICommand SetFilterValueCmd => new LambdaCommand(SetFilterValueCmdExecute, parameter => true);
 
     private void SetFilterValueCmdExecute(object? parameter)
     {
@@ -129,7 +130,7 @@ public class TaskListViewModel : ViewModelBase
     private bool CanFilterTVMCmdExecute(object? parameter) => true;
     private async Task FilterTVMCmdExecute(object? parameter)
     {
-        Dictionary<string, string> dic = new();
+        Dictionary<string, string> dic = [];
 
         foreach(string filter in Filters)
         {
@@ -142,12 +143,10 @@ public class TaskListViewModel : ViewModelBase
 
         var setter = SetFilterProperty().Compile();
 
-        bool isFiltered = false;
         foreach(var kvp in dic)
         {
             if(kvp.Value != "None")
             {
-                isFiltered = true;
                 setter(taskDto, kvp.Key, kvp.Value);
             }
         }
@@ -164,7 +163,7 @@ public class TaskListViewModel : ViewModelBase
 
         List<TaskViewModel> newTVMS = [];
 
-        foreach(var filteredTvm in filteredTVMs)
+        foreach(var filteredTvm in filteredTVMs!)
         {
             newTVMS.Add(Infrastructure.Transform.Transformer.ToModel(filteredTvm));
         }
@@ -177,15 +176,15 @@ public class TaskListViewModel : ViewModelBase
 
     private void OnTaskOperationDone(object? sender, CreateUpdateEventArgs e)
     {
-        ShowMessage(e.Message);
+        ShowMessage(e.Message!);
         if(e.OperationName == "Add")
         {
-            TVMs.Add(Infrastructure.Transform.Transformer.ToModel(e.Dto));
+            TVMs.Add(Infrastructure.Transform.Transformer.ToModel(e.Dto!));
         }
         if(e.OperationName == "Update")
         {
-            var tvm = TVMs.First(x => x.Id == e.Dto.Id);
-            if(e.Dto.DeadlineDate is not null)
+            var tvm = TVMs.First(x => x.Id == e.Dto!.Id);
+            if(e.Dto!.DeadlineDate is not null)
             {
                 tvm.Deadline = e.Dto.DeadlineDate;
             }
@@ -194,14 +193,12 @@ public class TaskListViewModel : ViewModelBase
         }
     }
 
-    private ICommand? _updateTaskCmd;
-    public ICommand UpdateTaskCmd => _updateTaskCmd ?? new LambdaCommand(UpdateTaskExecuted, CanUpdateTaskCmdExecute);
+    public ICommand UpdateTaskCmd => new LambdaCommand(UpdateTaskExecuted, CanUpdateTaskCmdExecute);
 
     private bool CanUpdateTaskCmdExecute(object? parameter)
     {
-        var tvm = parameter as TaskViewModel;
-
-        if(tvm is null || tvm.Completed)
+        if(parameter is not TaskViewModel tvm 
+            || tvm.Status != Shared.TaskStatus.Pending)
         {
             return false;
         }
@@ -221,20 +218,18 @@ public class TaskListViewModel : ViewModelBase
 
         UpdateTask?.Invoke(new () 
         {            
-            Dto = Infrastructure.Transform.Transformer.ToDto(tvm)   
+            Dto = Infrastructure.Transform.Transformer.ToDto(tvm!)   
         });
 
         _navigationStore.Next(nextPage);
     }
 
-    private ICommand? _completeTaskCmd;
-    public ICommand CompleteTaskCmd => _completeTaskCmd ?? new LambdaCommand(CompleteTaskCmdExecute, CanCompleteTaskCmdExecute);
+    //private readonly ICommand? _completeTaskCmd;
+    public ICommand CompleteTaskCmd => new LambdaCommand(CompleteTaskCmdExecute, CanCompleteTaskCmdExecute);
 
     private bool CanCompleteTaskCmdExecute(object? parameter)
     {
-        var tvm = parameter as TaskViewModel;
-
-        if(tvm.Completed == true)
+        if(parameter is not TaskViewModel tvm || tvm.Status != Shared.TaskStatus.Pending)
         {
             return false;
         }
@@ -243,17 +238,17 @@ public class TaskListViewModel : ViewModelBase
 
     private async void CompleteTaskCmdExecute(object? parameter)
     {
-        var tvm = parameter as TaskViewModel;
+        TaskViewModel tvm = parameter as TaskViewModel;
 
-        tvm.Completed = true;
+        tvm.Status = Shared.TaskStatus.Completed;
 
-        var dto = Infrastructure.Transform.Transformer.ToDto(tvm);
+        TaskDto dto = Infrastructure.Transform.Transformer.ToDto(tvm);
 
         using IServiceScope scope = _scopeFactory.CreateScope();
 
-        var service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
 
-        var result = await service.UpdateAsync(dto);
+        BaseResponse<TaskDto> result = await service.UpdateAsync(dto);
 
         ShowMessage(result.Message);
     }
@@ -275,11 +270,11 @@ public class TaskListViewModel : ViewModelBase
 
     private void ChangeCollection(object? sender, FilterDoneEventArgs e)
     {
-        var tvms = Infrastructure.Transform.Transformer.ToModel(e.Value);
+        var tvms = Infrastructure.Transform.Transformer.ToModel(e.Value!);
 
         TVMs = new(tvms);
         OnPropertyChanged(nameof(TVMs));
-        ShowMessage(e.Message);
+        ShowMessage(e.Message!);
     }
 
     private async Task InitializeCollection()
@@ -301,6 +296,8 @@ public class TaskListViewModel : ViewModelBase
             { 
                 TVMs.Add(Infrastructure.Transform.Transformer.ToModel(item));
             }
+
+            ShowMessage("Задачи успешно получены");
         }
     }
 
@@ -311,71 +308,50 @@ public class TaskListViewModel : ViewModelBase
         ParameterExpression newValue = Expression.Parameter(typeof(object), "v");
 
         // p.GetType()
-        MethodCallExpression getTypeCall =
-            Expression.Call(obj, typeof(object).GetMethod(nameof(object.GetType))!);
+        MethodCallExpression getTypeCall = Expression.Call(obj, typeof(object).GetMethod(nameof(object.GetType))!);
 
         // p.GetType().GetProperty(n)
-        MethodCallExpression getPropertyCall =
-            Expression.Call(getTypeCall,
-                typeof(Type).GetMethod(nameof(Type.GetProperty), new[] { typeof(string) })!,
-                propName);
+        MethodCallExpression getPropertyCall = Expression.Call(getTypeCall, typeof(Type).GetMethod(nameof(Type.GetProperty), [typeof(string)])!, propName);
 
         // property.PropertyType
-        MemberExpression propertyType =
-            Expression.Property(getPropertyCall, nameof(PropertyInfo.PropertyType));
+        MemberExpression propertyType = Expression.Property(getPropertyCall, nameof(PropertyInfo.PropertyType));
 
         // Nullable.GetUnderlyingType(property.PropertyType)
         MethodInfo getUnderlyingType = typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType))!;
-        MethodCallExpression underlyingTypeCall =
-            Expression.Call(getUnderlyingType, propertyType);
+        MethodCallExpression underlyingTypeCall = Expression.Call(getUnderlyingType, propertyType);
 
         // underlyingType == null ? propertyType : underlyingType
-        BinaryExpression underlyingIsNull =
-             Expression.Equal(underlyingTypeCall, Expression.Constant(null, typeof(Type)));
-        Expression realTargetType =
-            Expression.Condition(underlyingIsNull, propertyType, underlyingTypeCall);
+        BinaryExpression underlyingIsNull = Expression.Equal(underlyingTypeCall, Expression.Constant(null, typeof(Type)));
+        Expression realTargetType = Expression.Condition(underlyingIsNull, propertyType, underlyingTypeCall);
 
         // realTargetType.IsEnum
-        MemberExpression isEnum =
-            Expression.Property(realTargetType, nameof(Type.IsEnum));
+        MemberExpression isEnum = Expression.Property(realTargetType, nameof(Type.IsEnum));
 
         // (string)v
-        UnaryExpression valueToString =
-            Expression.Convert(newValue, typeof(string));
+        UnaryExpression valueToString = Expression.Convert(newValue, typeof(string));
 
         // Enum.Parse(realTargetType, (string)v)
         MethodCallExpression parsedEnum =
-            Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), new[] { typeof(Type), typeof(string) })!,
-                            realTargetType, valueToString);
+            Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), [typeof(Type), typeof(string)])!, realTargetType, valueToString);
 
         // (PropertyType)Enum.Parse(...)
-        Expression convertedEnum =
-            Expression.Convert(parsedEnum, typeof(object));
+        Expression convertedEnum = Expression.Convert(parsedEnum, typeof(object));
 
         // Convert.ChangeType(v, propertyType)
         MethodCallExpression convertedOther =
-            Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) })!,
-                            newValue, propertyType);
+            Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), [typeof(object), typeof(Type)])!, newValue, propertyType);
 
         // isEnum ? convertedEnum : convertedOther
-        ConditionalExpression valueExpression =
-            Expression.Condition(isEnum, convertedEnum, convertedOther);
+        ConditionalExpression valueExpression = Expression.Condition(isEnum, convertedEnum, convertedOther);
 
         // property.SetValue(p, valueExpression)
-        MethodCallExpression setValueCall =
-            Expression.Call(getPropertyCall,
-                typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue),
-                                               new[] { typeof(object), typeof(object) })!,
-                obj, valueExpression);
+        MethodCallExpression setValueCall = Expression
+            .Call(getPropertyCall, typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue), [typeof(object), typeof(object)])!, obj, valueExpression);
 
         return Expression.Lambda<Action<object, string, object>>(setValueCall, obj, propName, newValue);
     }
 
-    private void ShowMessage(string message)
-    {
-        Message = message;
-        HasMessage = true;
-    }
+    private void ShowMessage(string message) => App.Current.Dispatcher.InvokeAsync(() => MessageQueue.Enqueue(message));
 
     #endregion
 }

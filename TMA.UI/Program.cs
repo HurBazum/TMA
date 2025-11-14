@@ -1,24 +1,23 @@
 ﻿using Microsoft.Extensions.Hosting;
 
-namespace TMA.UI
+namespace TMA.UI;
+
+public class Program
 {
-    public class Program
+    [STAThread]
+    public static void Main(string[] args)
     {
-        [STAThread]
-        public static async Task Main(string[] args)
-        {
-            App app = new();
+        App app = new();
 
-            app.InitializeComponent();
+        app.InitializeComponent();
 
-            app.Run();
-        }
-
-        public static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args)
-            .ConfigureServices((hostingContext, services) =>
-            {
-                var config = hostingContext.Configuration;
-                App.ConfigureServices(services, config);
-            });
+        app.Run();
     }
+
+    public static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args)
+        .ConfigureServices((hostingContext, services) =>
+        {
+            var config = hostingContext.Configuration;
+            App.ConfigureServices(services, config);
+        });
 }

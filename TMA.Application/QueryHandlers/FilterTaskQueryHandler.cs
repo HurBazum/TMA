@@ -66,45 +66,8 @@ public class FilterTaskQueryHandler(ITaskRepository repository) : IQueryHandler<
             return Expression.Lambda<Func<TaskEntity, bool>>(Expression.Constant(true), entityParameter);
         }
         
-        AndSpecification<TaskEntity> andSpecification = new(expressions.ToArray());
+        AndSpecification<TaskEntity> andSpecification = new([.. expressions]);
 
         return andSpecification.ToExpression();
     }
-
-    // ISpecification
-    /*private Expression<Func<TaskEntity, bool>> CreateFilterExpression(DomainFilterTaskQuery query)
-    {
-        ParameterExpression entityParameter = Expression.Parameter(typeof(TaskEntity), "e");
-
-        var expressions = new List<Expression>();
-
-        foreach(var pi in query.GetType().GetProperties())
-        {
-            var piValue = pi.GetValue(query);
-
-            if(piValue == null)
-            {
-                continue;
-            }
-
-            Type? piUnderlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
-
-            ConstantExpression constant = Expression.Constant(piValue, piUnderlyingType);
-
-            MemberExpression entityProperty = Expression.Property(entityParameter, pi.Name);
-
-            BinaryExpression be = Expression.Equal(entityProperty, constant);
-
-            expressions.Add(be);
-        }
-
-        if(expressions.Count == 0)
-        {
-            return Expression.Lambda<Func<TaskEntity, bool>>(Expression.Constant(true), entityParameter);
-        }
-
-        var finalExpression = expressions.Aggregate(Expression.AndAlso);
-
-        return Expression.Lambda<Func<TaskEntity, bool>>(finalExpression, entityParameter);
-    }*/
 }

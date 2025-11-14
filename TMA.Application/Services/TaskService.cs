@@ -20,7 +20,7 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
 
             await _uow.SaveAsync();
 
-            return BaseResponse<TaskDto>.Success(result, $"Таска успешно добавлена");
+            return BaseResponse<TaskDto>.Success(result, $"Задача успешно добавлена");
 
         }
         catch(Exception ex)
@@ -35,7 +35,7 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
         {
             var result = await _mediator.SendAsync(new GetTasksQuery());
 
-            return BaseResponse<List<TaskDto>>.Success(result, $"Таски успешно получены");
+            return BaseResponse<List<TaskDto>>.Success(result, $"Задачи успешно получены");
         }
         catch(Exception ex)
         {
@@ -93,7 +93,7 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
             // priority, status, title, to, from
             List<TaskDto>? tasks = await _mediator.SendAsync(new FilterTaskQuery(dto.Priority, dto.Status, dto.Title, dto.To, dto.From));
 
-            return BaseResponse<List<TaskDto>>.Success(tasks, $"Task was filtered successfuly");
+            return BaseResponse<List<TaskDto>>.Success(tasks, $"Фильтрация выполнена");
         }
         catch(Exception ex)
         {

@@ -8,19 +8,13 @@ using TMA.Domain.VOs;
 
 namespace TMA.Application.Services;
 
-public class CheckTaskService
+public class CheckTaskService(IServiceScopeFactory scopeFactory, IMediator mediator, IUnitOfWork unitOfWork)
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IMediator _mediator;
-    private readonly IUnitOfWork _unitOfWork;
-    public EventHandler<ExpiredTaskEventArgs>? ExpiredTask;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+    private readonly IMediator _mediator = mediator;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public CheckTaskService(IServiceScopeFactory scopeFactory, IMediator mediator, IUnitOfWork unitOfWork)
-    {
-        _scopeFactory = scopeFactory;
-        _mediator = mediator;
-        _unitOfWork = unitOfWork;
-    }
+    public EventHandler<ExpiredTaskEventArgs>? ExpiredTask;
 
     public async Task CheckTasksDeadlineAsync(CancellationToken token)
     {

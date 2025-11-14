@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:TMA.UI.Views.Partials"
+             xmlns:adds="clr-namespace:TMA.UI.Infrastructure"
              mc:Ignorable="d" 
              d:DesignHeight="250" d:DesignWidth="800" d:Background="AliceBlue">
     <Grid Background="#FF76767F">
@@ -11,12 +12,6 @@
             <RowDefinition Height="100" />
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-
-        <Grid.Resources>
-            <Style TargetType="{x:Type RadioButton}">
-                <Setter Property="Command" Value="{Binding GetFilterFilter}" />
-            </Style>
-        </Grid.Resources>
         
         <StackPanel Orientation="Horizontal"
                     Height="70"
@@ -27,24 +22,70 @@
                      Margin="10, 5"
                      Padding="5"
                      FontFamily="Bookman Old Style" />
-            <Button Style="{StaticResource MinOpBtn}" Content="Search" Command="{Binding UseFilterCmd}" />
-            <Button Style="{StaticResource MinOpBtn}" Content="More" Command="{Binding UseAllFiltersCmd}" />
+            <Button Style="{StaticResource MinOpBtn}" 
+                    Content="Search" 
+                    Command="{Binding UseFilterCmd}" />
+            <Button Style="{StaticResource MinOpBtn}" 
+                    Content="More" 
+                    Command="{Binding UseAllFiltersCmd}" />
         </StackPanel>
-        <StackPanel x:Name="MoreFilters" Grid.Row="1" Visibility="{Binding IsAllFilterUse, Converter={StaticResource visibilityConverter}}" Margin="10" >
-            <StackPanel>
-                <TextBlock Text="Priority" TextAlignment="Center" />
-                <RadioButton Content="None" CommandParameter="Priority_None" />
-                <RadioButton Content="Normal" CommandParameter="Priority_Normal" />
-                <RadioButton Content="Medium" CommandParameter="Priority_Medium" />
-                <RadioButton Content="High" CommandParameter="Priority_High" />
-            </StackPanel>
-            <StackPanel>
-                <TextBlock Text="Status" TextAlignment="Center" />
-                <RadioButton Content="None" CommandParameter="Status_None" />
-                <RadioButton Content="Pending" CommandParameter="Status_Pending" />
-                <RadioButton Content="Completed" CommandParameter="Status_Completed" />
-                <RadioButton Content="Expired" CommandParameter="Status_Expired" />
-            </StackPanel>
+        
+        <StackPanel x:Name="MoreFilters" 
+                    Grid.Row="1" 
+                    Visibility="{Binding IsAllFilterUse, Converter={StaticResource visibilityConverter}}" 
+                    Margin="10" >
+            <ItemsControl ItemsSource="{Binding FilterGroups}" 
+                          d:IsHidden="True">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type adds:FilterGroup}">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="{Binding Header}" />
+                            <ItemsControl ItemsSource="{Binding Options}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type adds:FilterOption}">
+                                        <RadioButton Content="{Binding Value}"
+                                                     Command="{Binding DataContext.GetFilterFilter, RelativeSource={RelativeSource AncestorType=Grid}}"
+                                                     CommandParameter="{Binding CommandParameter}"                                                     
+                                                     GroupName="{Binding DataContext.Header, RelativeSource={RelativeSource AncestorType=StackPanel, AncestorLevel=2}}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
     </Grid>
 </UserControl>
+
+    
+    <!--
+    
+    <Style TargetType="{x:Type RadioButton}">
+    <Setter Property="Command" Value="{Binding GetFilterFilter}" />
+
+    <Setter Property="CommandParameter">
+        <Setter.Value>
+            <MultiBinding Converter="{StaticResource testConverter}">
+                <Binding ElementName="Header" Path="Text" />
+                <Binding RelativeSource="{RelativeSource Self}" Path="Content" />
+            </MultiBinding>
+        </Setter.Value>
+    </Setter>
+</Style>
+    
+    <StackPanel>
+    <TextBlock Text="Priority" TextAlignment="Center" x:Name="Header" />
+    <RadioButton Content="None"  />
+    <RadioButton Content="Normal" />
+    <RadioButton Content="Medium"/>
+    <RadioButton Content="High" />
+</StackPanel>
+<StackPanel>
+    <TextBlock Text="Status" TextAlignment="Center"  />
+    <RadioButton Content="None" CommandParameter="Status_None" />
+    <RadioButton Content="Pending" CommandParameter="Status_Pending" />
+    <RadioButton Content="Completed" CommandParameter="Status_Completed" />
+    <RadioButton Content="Expired" CommandParameter="Status_Expired" />
+</StackPanel>
+    -->
