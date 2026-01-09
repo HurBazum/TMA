@@ -1,28 +1,56 @@
-﻿using System.Linq.Expressions;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using TMA.Application.Others;
 using TMA.Application.Dtos;
+using TMA.Application.Dtos.DtoAttributes;
+using TMA.Application.Others;
 using TMA.Application.Services;
+using TMA.UI.Infrastructure;
 using TMA.UI.Infrastructure.Commands;
 using TMA.UI.Infrastructure.Commands.Base;
+using TMA.UI.Infrastructure.Commands.SpecialCommands;
 using TMA.UI.Infrastructure.EventArguments;
 using TMA.UI.ViewModels.Base;
-using System.Collections.ObjectModel;
-using TMA.UI.Infrastructure;
 
 namespace TMA.UI.ViewModels;
 
 public class FilterViewModel : ViewModelBase
 {
-    private readonly ITaskService<TaskDto> _taskService;
+    private readonly IServiceScopeFactory _factory;
 
     public event EventHandler<FilterDoneEventArgs>? SearchIsDone;
 
-    public FilterViewModel(ITaskService<TaskDto> taskService)
+    public LambdaCommand UniversalDateCmd { get; private set; }
+    public Dictionary<string, PropertyAccessor<DateTime?>> _dates;
+
+    public FilterViewModel(IServiceScopeFactory factory)
     {
-        _taskService = taskService;
+        _factory = factory;
+
+        _dates = new()
+        {
+            {
+                "From",
+                new PropertyAccessor<DateTime?>()
+                {
+                    Getter = () => From,
+                    Setter = (x) => From = x
+                }
+            },
+            {
+                "To",
+                new PropertyAccessor<DateTime?>()
+                {
+                    Getter = () => To,
+                    Setter = (x) => To = x
+                }
+            }
+        };
+
+        UniversalDateCmd = CommandCreator.CreateDateCmd(_dates);
     }
 
     #region properties
@@ -56,18 +84,40 @@ public class FilterViewModel : ViewModelBase
         }
     }
 
-    private DateTime? _to;
+    private DateTime? _to = DateTime.Today;
     public DateTime? To
     {
         get => _to;
-        set => Set(ref _to, value);
+        set
+        {
+            Set(ref _to, value);
+            OnAddedFilterValue(To!);
+        }
     }
 
-    private DateTime? _from;
+    private DateTime? _from = DateTime.Today;
     public DateTime? From
     {
         get => _from;
-        set => Set(ref _from, value);
+        set
+        {
+            Set(ref _from, value);
+            OnAddedFilterValue(From!);
+        }
+    }
+
+    private bool _useTo = false;
+    public bool UseTo
+    {
+        get => _useTo;
+        set => Set(ref _useTo, value);
+    }
+
+    private bool _useFrom = false;
+    public bool UseFrom
+    {
+        get => _useFrom;
+        set => Set(ref _useFrom, value);
     }
 
 
@@ -148,8 +198,10 @@ public class FilterViewModel : ViewModelBase
             expr(filterDto, separated[0], separated[1]);            
         }
 
-        var response = await _taskService.FilterTaskAsync(filterDto);
-
+        using IServiceScope scope = _factory.CreateScope();
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+        BaseResponse<List<TaskDto>> response = await service.FilterTaskAsync(filterDto);
+        
         IsAllFilterUse = false;
 
         OnFilterDone(response);
@@ -163,7 +215,7 @@ public class FilterViewModel : ViewModelBase
         Value = response.Value
     });
         
-    private void OnAddedFilterValue(object propertyValue, [CallerArgumentExpression(nameof(propertyValue))]string propertyName = null)
+    private void OnAddedFilterValue(object propertyValue, [CallerArgumentExpression(nameof(propertyValue))]string? propertyName = null)
     {
         if(propertyValue != null)
         {
@@ -197,40 +249,53 @@ public class FilterViewModel : ViewModelBase
 
     private Expression<Action<object, string, object>> FilterInitializer()
     {
-        ParameterExpression dto = Expression.Parameter(typeof(object), "d");
+        ParameterExpression obj = Expression.Parameter(typeof(object), "p");
         ParameterExpression propName = Expression.Parameter(typeof(string), "n");
-        ParameterExpression propValue = Expression.Parameter(typeof(object), "v");
+        ParameterExpression newValue = Expression.Parameter(typeof(object), "v");
 
-        MethodCallExpression getDtoTypeCall = Expression.Call(dto, typeof(object).GetMethod(nameof(object.GetType))!);
-        MethodCallExpression getDtoPropertyCall = Expression.Call(getDtoTypeCall, 
-            typeof(Type).GetMethod(nameof(Type.GetProperty), [typeof(string)])!, propName);
+        // p.GetType()
+        MethodCallExpression getTypeCall = Expression.Call(obj, typeof(object).GetMethod(nameof(object.GetType))!);
 
-        MemberExpression propertyType = Expression.Property(getDtoPropertyCall, nameof(PropertyInfo.PropertyType));
+        // p.GetType().GetProperty(n)
+        MethodCallExpression getPropertyCall = Expression.Call(getTypeCall, typeof(Type).GetMethod(nameof(Type.GetProperty), [typeof(string)])!, propName);
 
-        MethodCallExpression getUnderlyingTypeCall = Expression.Call(typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType), [typeof(Type)])!
-            , propertyType);
+
+        // property.PropertyType
+        MemberExpression propertyType = Expression.Property(getPropertyCall, nameof(PropertyInfo.PropertyType));
+
+        // Nullable.GetUnderlyingType(property.PropertyType)
+        MethodInfo getUnderlyingType = typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType))!;
+        MethodCallExpression underlyingTypeCall = Expression.Call(getUnderlyingType, propertyType);
+
+        // underlyingType == null ? propertyType : underlyingType
+        BinaryExpression underlyingIsNull = Expression.Equal(underlyingTypeCall, Expression.Constant(null, typeof(Type)));
+        Expression realTargetType = Expression.Condition(underlyingIsNull, propertyType, underlyingTypeCall);
+
+        // realTargetType.IsEnum
+        MemberExpression isEnum = Expression.Property(realTargetType, nameof(Type.IsEnum));
+
+        // (string)v
+        UnaryExpression valueToString = Expression.Convert(newValue, typeof(string));
+
+        // Enum.Parse(realTargetType, (string)v)
+        MethodCallExpression parsedEnum =
+            Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), [typeof(Type), typeof(string)])!, realTargetType, valueToString);
+
+        // (PropertyType)Enum.Parse(...)
+        Expression convertedEnum = Expression.Convert(parsedEnum, typeof(object));
         
-        BinaryExpression checkFoNull = Expression.Equal(getUnderlyingTypeCall, Expression.Constant(null, typeof(Type)));
+        // Convert.ChangeType(v, propertyType)
+        MethodCallExpression convertedOther =
+            Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), [typeof(object), typeof(Type), typeof(IFormatProvider)])!, 
+            newValue, realTargetType, Expression.Constant(System.Globalization.CultureInfo.CurrentCulture));
 
-        ConditionalExpression getRealType = Expression.Condition(checkFoNull, propertyType, getUnderlyingTypeCall);
+        // isEnum ? convertedEnum : convertedOther
+        ConditionalExpression valueExpression = Expression.Condition(isEnum, convertedEnum, convertedOther);
 
-        MemberExpression isEnum = Expression.Property(getRealType, nameof(Type.IsEnum));
+        // property.SetValue(p, valueExpression)
+        MethodCallExpression setValueCall = Expression
+            .Call(getPropertyCall, typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue), [typeof(object), typeof(object)])!, obj, valueExpression);
 
-        UnaryExpression convertTo = Expression.Convert(propValue, typeof(string));
-
-        MethodCallExpression parsedEnum = Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), [typeof(Type), typeof(string)])!,
-            getRealType, convertTo);
-
-        UnaryExpression convertedEnum = Expression.Convert(parsedEnum, typeof(object));
-
-        MethodCallExpression parsedOther = Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), [typeof(object), typeof(Type)])!,
-            convertTo, propertyType);
-
-        ConditionalExpression condition = Expression.Condition(isEnum, convertedEnum, parsedOther);
-
-        MethodCallExpression setValueCall = Expression.Call(getDtoPropertyCall, typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue)
-            , [typeof(object), typeof(object)])!, dto, condition);
-
-        return Expression.Lambda<Action<object, string, object>>(setValueCall, dto, propName, propValue);
+        return Expression.Lambda<Action<object, string, object>>(setValueCall, obj, propName, newValue);
     }
 }

@@ -6,5 +6,5 @@ namespace TMA.Application.Queries;
 
 public record GetByIdQuery : IQuery<TaskDto>
 {
-    public TaskId Id { get; init; } = null!;
+    public TaskId Id { get; init; }
 }

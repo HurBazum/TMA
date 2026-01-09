@@ -2,6 +2,7 @@
 using TMA.Domain;
 using TMA.Domain.VOs;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace TMA.Infrastructure;
 
@@ -12,7 +13,11 @@ public class TaskRepository(AppDbContext context) : ITaskRepository
     {
         var entry = _context.Entry(taskEntity);
 
-        entry.State = EntityState.Added;
+        _context.Tasks.Add(taskEntity);
+
+        //var r = entry.Reference(t => t.Status).TargetEntry.Property("TaskEntityId").CurrentValue;
+        //var debug = context.ChangeTracker.DebugView.LongView;
+        //entry.State = EntityState.Added;
 
         return await Task.FromResult(taskEntity);
     }

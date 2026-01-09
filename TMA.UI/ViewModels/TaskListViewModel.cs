@@ -223,8 +223,6 @@ public class TaskListViewModel : ViewModelBase
 
         _navigationStore.Next(nextPage);
     }
-
-    //private readonly ICommand? _completeTaskCmd;
     public ICommand CompleteTaskCmd => new LambdaCommand(CompleteTaskCmdExecute, CanCompleteTaskCmdExecute);
 
     private bool CanCompleteTaskCmdExecute(object? parameter)
@@ -270,10 +268,19 @@ public class TaskListViewModel : ViewModelBase
 
     private void ChangeCollection(object? sender, FilterDoneEventArgs e)
     {
-        var tvms = Infrastructure.Transform.Transformer.ToModel(e.Value!);
+        if(e.Value is not null)
+        {
+            var tvms = Infrastructure.Transform.Transformer.ToModel(e.Value!);
 
-        TVMs = new(tvms);
+            TVMs = new(tvms);
+        }
+        else
+        {
+            TVMs.Clear();
+        }
+
         OnPropertyChanged(nameof(TVMs));
+
         ShowMessage(e.Message!);
     }
 

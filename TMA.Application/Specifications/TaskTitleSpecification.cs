@@ -4,19 +4,19 @@ using TMA.Domain.VOs;
 
 namespace TMA.Application.Specifications;
 
-internal class TaskTitleSpecification(TaskTitle title) : ISpecification<TaskEntity>
+internal class TaskTitleSpecification(string title) : ISpecification<TaskEntity>
 {
-    public TaskTitle Title { get; } = title;
+    public string Title { get; } = title;
 
     public Expression<Func<TaskEntity, bool>> ToExpression()
     {
         ParameterExpression param = Expression.Parameter(typeof(TaskEntity), "e");
-        ConstantExpression title = Expression.Constant(Title, typeof(TaskTitle));
+        ConstantExpression title = Expression.Constant(Title, typeof(string));
 
         MemberExpression prop = Expression.Property(param, nameof(TaskEntity.Title));
         MemberExpression propValue = Expression.Property(prop, nameof(TaskTitle.Value));
-        MemberExpression titleValue = Expression.Property(title, nameof(TaskTitle.Value));
-        MethodCallExpression call = Expression.Call(propValue, typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!, titleValue);
+
+        MethodCallExpression call = Expression.Call(propValue, typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!, title);
 
         return Expression.Lambda<Func<TaskEntity, bool>>(call, param);
     }

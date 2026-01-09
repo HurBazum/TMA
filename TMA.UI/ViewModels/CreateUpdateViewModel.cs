@@ -9,13 +9,37 @@ using TMA.UI.ViewModels.Base;
 using TMA.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using TMA.Application.Others;
+using TMA.UI.Infrastructure.Commands.SpecialCommands;
 
 namespace TMA.UI.ViewModels;
 
-public class CreateUpdateViewModel(IServiceScopeFactory scopeFactory, INavigationStore navigationStore) : ViewModelBase
+public class CreateUpdateViewModel : ViewModelBase
 {
-    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
-    private readonly INavigationStore _navigationStore = navigationStore;
+    public CreateUpdateViewModel(IServiceScopeFactory scopeFactory, INavigationStore navigationStore)
+    {
+        _scopeFactory = scopeFactory;
+        _navigationStore = navigationStore;
+
+        _dates = new()
+        {
+            {
+                "Deadline",
+                new PropertyAccessor<DateTime?>()
+                {
+                    Getter = () => Deadline,
+                    Setter = x => Deadline = x
+                }
+            }
+        };
+
+        UniversalDateCmd = CommandCreator.CreateDateCmd(_dates);
+    }
+
+    public LambdaCommand UniversalDateCmd { get; private set; }
+    public Dictionary<string, PropertyAccessor<DateTime?>> _dates;
+
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly INavigationStore _navigationStore;
 
     public event EventHandler<CreateUpdateEventArgs>? OperationDone;
     
@@ -111,13 +135,13 @@ public class CreateUpdateViewModel(IServiceScopeFactory scopeFactory, INavigatio
         switch(data)
         {
             case DataValue.Day:
-                Deadline = Deadline.Value.AddDays(x);
+                Deadline = Deadline!.Value.AddDays(x);
                 break;
             case DataValue.Month:
-                Deadline = Deadline.Value.AddMonths(x);
+                Deadline = Deadline!.Value.AddMonths(x);
                 break;
             case DataValue.Year:
-                Deadline = Deadline.Value.AddYears(x);
+                Deadline = Deadline!.Value.AddYears(x);
                 break;
             case DataValue.Priority:
                 if(isIncrement)
@@ -182,7 +206,7 @@ public class CreateUpdateViewModel(IServiceScopeFactory scopeFactory, INavigatio
     
     public void SetProperties(CreateUpdateEventArgs e)
     {
-        Id = e.Dto.Id;
+        Id = e.Dto!.Id!;
         TaskTitle = e.Dto.Title;
         Priority = e.Dto.Priority;
         Deadline = e.Dto.DeadlineDate ?? DateTime.Now;

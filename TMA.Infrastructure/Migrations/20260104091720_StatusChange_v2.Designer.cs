@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TMA.Infrastructure;
 
@@ -10,9 +11,11 @@ using TMA.Infrastructure;
 namespace TMA.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260104091720_StatusChange_v2")]
+    partial class StatusChange_v2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
@@ -38,7 +41,7 @@ namespace TMA.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tasks", (string)null);
+                    b.ToTable("Tasks");
                 });
 
             modelBuilder.Entity("TMA.Domain.TaskEntity", b =>
@@ -49,17 +52,14 @@ namespace TMA.Infrastructure.Migrations
                                 .HasColumnType("TEXT");
 
                             b1.Property<DateTime>("ChangedAt")
-                                .HasColumnType("TEXT")
-                                .HasColumnName("Status_ChangedAt");
+                                .HasColumnType("TEXT");
 
-                            b1.Property<string>("Type")
-                                .IsRequired()
-                                .HasColumnType("TEXT")
-                                .HasColumnName("Status_Type");
+                            b1.Property<int>("Type")
+                                .HasColumnType("INTEGER");
 
                             b1.HasKey("TaskEntityId");
 
-                            b1.ToTable("Tasks", (string)null);
+                            b1.ToTable("Tasks");
 
                             b1.WithOwner()
                                 .HasForeignKey("TaskEntityId");

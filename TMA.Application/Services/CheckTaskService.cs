@@ -41,8 +41,9 @@ public class CheckTaskService(IServiceScopeFactory scopeFactory, IMediator media
                 {
                     TaskId id = new()
                     {
-                        Value = Guid.Parse(taskDto.Id)
+                        Value = Guid.Parse(taskDto.Id!) 
                     };
+
 
                     ExpireTaskCommand etc = new(id);
 

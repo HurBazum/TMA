@@ -18,6 +18,8 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
 
             TaskDto result = await _mediator.SendAsync(atc);
 
+
+            // ?
             await _uow.SaveAsync();
 
             return BaseResponse<TaskDto>.Success(result, $"Задача успешно добавлена");
@@ -49,9 +51,9 @@ public class TaskService(IMediator mediator, IUnitOfWork uow) : ITaskService<Tas
         {
             GetByIdQuery idQuery = new()
             {
-                Id = new() 
-                { 
-                    Value = Guid.Parse(dto.Id) 
+                Id = new()
+                {
+                    Value = Guid.Parse(dto.Id!)
                 }
             };
 

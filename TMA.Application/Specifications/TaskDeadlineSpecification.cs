@@ -10,6 +10,7 @@ public class TaskDeadlineSpecification(DateTime? date) : ISpecification<TaskEnti
     public Expression<Func<TaskEntity, bool>> ToExpression()
     {
         ParameterExpression parameter = Expression.Parameter(typeof(TaskEntity), "e");
+
         ConstantExpression dateConstant = Expression.Constant(DeadlineDate, typeof(DateTime?));
 
         MemberExpression property = Expression.Property(parameter, nameof(TaskEntity.Deadline));

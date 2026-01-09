@@ -92,6 +92,35 @@
         </Setter>
     </Style>
 
+    <Style x:Key="clndrBtn" TargetType="{x:Type Button}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="brdr"
+                            BorderBrush="{TemplateBinding Background}"
+                            BorderThickness="2"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="5"
+                            Opacity="0.8">
+                        <ContentPresenter x:Name="cPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Center" />
+                    </Border>
+                    
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" TargetName="brdr" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Opacity" Value="1" TargetName="brdr" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="mnBtn" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
         <Setter Property="Width" Value="100" />
         <Setter Property="Height" Value="45" />

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TMA.Infrastructure;
 
@@ -10,9 +11,11 @@ using TMA.Infrastructure;
 namespace TMA.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260104122348_FixContext")]
+    partial class FixContext
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
@@ -38,7 +41,7 @@ namespace TMA.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tasks", (string)null);
+                    b.ToTable("Tasks");
                 });
 
             modelBuilder.Entity("TMA.Domain.TaskEntity", b =>
@@ -59,7 +62,7 @@ namespace TMA.Infrastructure.Migrations
 
                             b1.HasKey("TaskEntityId");
 
-                            b1.ToTable("Tasks", (string)null);
+                            b1.ToTable("Tasks");
 
                             b1.WithOwner()
                                 .HasForeignKey("TaskEntityId");

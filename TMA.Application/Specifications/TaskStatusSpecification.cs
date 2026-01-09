@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using TMA.Domain;
+using TMA.Domain.VOs;
 
 namespace TMA.Application.Specifications
 {
@@ -13,7 +14,9 @@ namespace TMA.Application.Specifications
             ConstantExpression status = Expression.Constant(Status, typeof(Shared.TaskStatus));
 
             MemberExpression prop = Expression.Property(param, nameof(TaskEntity.Status));
-            BinaryExpression be = Expression.Equal(prop, status);
+            MemberExpression propValue = Expression.Property(prop, nameof(TaskEntity.Status.Type));
+
+            BinaryExpression be = Expression.Equal(propValue, status);
 
             return Expression.Lambda<Func<TaskEntity, bool>>(be, param);
         }
