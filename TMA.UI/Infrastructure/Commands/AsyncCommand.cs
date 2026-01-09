@@ -1,5 +1,4 @@
-﻿using System.Windows.Input;
-using TMA.UI.Infrastructure.Commands.Base;
+﻿using TMA.UI.Infrastructure.Commands.Base;
 
 namespace TMA.UI.Infrastructure.Commands;
 

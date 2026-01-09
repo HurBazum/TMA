@@ -1,5 +1,11 @@
-﻿using TMA.Domain.VOs;
+﻿using TMA.Application.MediatorFolder;
+using TMA.Domain.VOs;
+using TMA.Application.Dtos;
 
 namespace TMA.Application.Commands;
 
-public record RenameTaskCommand(TaskId Id, TaskTitle NewTitle);
+public class RenameTaskCommand(TaskId id, TaskTitle newTitle) : ICommand<TaskDto>
+{
+    public TaskId Id { get; } = id;
+    public TaskTitle NewTitle { get; } = newTitle;
+}

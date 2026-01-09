@@ -1,18 +1,45 @@
 ﻿using System.Windows.Input;
-using TMA.Infrastructure;
+using TMA.Application.Services;
+using TMA.Application.Dtos;
 using TMA.UI.Infrastructure.Commands;
 using TMA.UI.Infrastructure.Commands.Base;
 using TMA.UI.Infrastructure.EventArguments;
 using TMA.UI.Infrastructure.Stores;
 using TMA.UI.ViewModels.Base;
 using TMA.Shared;
+using Microsoft.Extensions.DependencyInjection;
+using TMA.Application.Others;
+using TMA.UI.Infrastructure.Commands.SpecialCommands;
 
 namespace TMA.UI.ViewModels;
 
-public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigationStore navigationStore) : ViewModelBase
+public class CreateUpdateViewModel : ViewModelBase
 {
-    private readonly ITaskService<TaskDto> _taskService = taskService;
-    private readonly INavigationStore _navigationStore = navigationStore;
+    public CreateUpdateViewModel(IServiceScopeFactory scopeFactory, INavigationStore navigationStore)
+    {
+        _scopeFactory = scopeFactory;
+        _navigationStore = navigationStore;
+
+        _dates = new()
+        {
+            {
+                "Deadline",
+                new PropertyAccessor<DateTime?>()
+                {
+                    Getter = () => Deadline,
+                    Setter = x => Deadline = x
+                }
+            }
+        };
+
+        UniversalDateCmd = CommandCreator.CreateDateCmd(_dates);
+    }
+
+    public LambdaCommand UniversalDateCmd { get; private set; }
+    public Dictionary<string, PropertyAccessor<DateTime?>> _dates;
+
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly INavigationStore _navigationStore;
 
     public event EventHandler<CreateUpdateEventArgs>? OperationDone;
     
@@ -59,11 +86,9 @@ public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigatio
         set => Set(ref _isLimited, value);
     }
 
-    private IAsyncCommand _addTaskCmd => new AsyncCommand(AddTaskCmdExecute, CanAddTaskCmdExecuted);
-    private IAsyncCommand _updateTaskAsyncCmd => new AsyncCommand(UpdateTaskExecuteAsync, CanUpdateTaskExecuteAsync);
+    private IAsyncCommand AddTaskAsyncCmd => new AsyncCommand(AddTaskCmdExecute, CanAddTaskCmdExecuted);
+    private IAsyncCommand UpdateTaskAsyncCmd => new AsyncCommand(UpdateTaskExecuteAsync, CanUpdateTaskExecuteAsync);
     
-    private ICommand? _changeValueCmd;
-
     private enum DataValue
     {
         Day,
@@ -72,76 +97,61 @@ public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigatio
         Priority
     }
 
-    public ICommand ChangeValueCmd => _changeValueCmd ?? new LambdaCommand(ChangeValueCmdExecute, CanChangeValueCmdExecute);    
-    public CmdAdapter AddTaskCmdAdapt => new(_addTaskCmd);
-    private CmdAdapter UpdateTaskAsyncCmdAdapt => new(_updateTaskAsyncCmd);
+    public ICommand ChangeValueCmd => new LambdaCommand(ChangeValueCmdExecute, CanChangeValueCmdExecute);    
+    public CmdAdapter AddTaskCmdAdapt => new(AddTaskAsyncCmd);
+    private CmdAdapter UpdateTaskAsyncCmdAdapt => new(UpdateTaskAsyncCmd);
 
     
     public LambdaCommand AddTaskCmd => new(AddTaskCmdAdapt.Execute, AddTaskCmdAdapt.CanExecute);
     public LambdaCommand UpdateTaskCmd => new(UpdateTaskAsyncCmdAdapt.Execute, UpdateTaskAsyncCmdAdapt.CanExecute);
-    public LambdaCommand GoBackCmd => new((object p) => { _navigationStore.Previous(); }, (object p) => true);
+    public LambdaCommand GoBackCmd => new(p => { _navigationStore.Previous(); }, p => true);
 
     private bool CanChangeValueCmdExecute(object parameter) => true;
     private void ChangeValueCmdExecute(object parameter)
     {
-        string obj = parameter as string;
-
-        if(string.IsNullOrEmpty(obj))
+        if(parameter is not string obj || string.IsNullOrEmpty(obj))
         {
             return;
         }
 
         string[] propAction = obj.Split('_');
 
+        if(propAction.Length < 2)
+        {
+            return;
+        }
+
         bool isIncrement = (propAction[1] == "Increment");
 
-        DataValue data = Enum.Parse<DataValue>(propAction[0]);
+        int x = isIncrement ? 1 : -1;
+
+        bool result = Enum.TryParse<DataValue>(propAction[0], out DataValue data);
+
+        if(!result)
+        {
+            return;
+        }
 
         switch(data)
         {
             case DataValue.Day:
-                if(isIncrement)
-                {
-                    Deadline = Deadline.Value.AddDays(1);
-                }
-                else
-                {
-                    Deadline = Deadline.Value.AddDays(-1);
-                }
-                ;
+                Deadline = Deadline!.Value.AddDays(x);
                 break;
             case DataValue.Month:
-                if(isIncrement)
-                {
-                    Deadline = Deadline.Value.AddMonths(1);
-                }
-                else
-                {
-                    Deadline = Deadline.Value.AddMonths(-1);
-                }
-                ;
+                Deadline = Deadline!.Value.AddMonths(x);
                 break;
             case DataValue.Year:
-                if(isIncrement)
-                {
-                    Deadline = Deadline.Value.AddYears(1);
-                }
-                else
-                {
-                    Deadline = Deadline.Value.AddYears(-1);
-                }
-                ;
+                Deadline = Deadline!.Value.AddYears(x);
                 break;
             case DataValue.Priority:
                 if(isIncrement)
                 {
-                    Priority = ((int)Priority < 2) ? Priority + 1 : TaskPriority.Normal;
+                    Priority = (Priority < TaskPriority.High) ? Priority + 1 : TaskPriority.Normal;
                 }
                 else
                 {
-                    Priority = ((int)Priority > 0) ? Priority - 1 : TaskPriority.High;
-                }
-                ;
+                    Priority = (Priority > TaskPriority.Normal) ? Priority - 1 : TaskPriority.High;
+                };
                 break;
         }
     }
@@ -158,22 +168,29 @@ public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigatio
     {
         TaskDto dto = new() { Title = TaskTitle, Priority = Priority };
 
+        using IServiceScope scope = _scopeFactory.CreateScope();
+
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+
         if(IsLimited)
         {
             dto.DeadlineDate = Deadline;
         }
-
-        var result = await _taskService.AddAsync(dto);
         
+        BaseResponse<TaskDto> result = await service.AddAsync(dto);
+
+        CreateUpdateEventArgs e = new()
+        {
+            OperationName = "Add",
+            Message = result.Message
+        };
+
         if(result.Value != null)
         {
-            OperationDone?.Invoke(this, new CreateUpdateEventArgs() 
-            {
-                OperationName = "Add",
-                Dto = result.Value,
-                Message = result.Message
-            });
+            e.Dto = result.Value;
         }
+
+        OperationDone?.Invoke(this, e);
 
         _navigationStore.Previous();
     }        
@@ -187,19 +204,12 @@ public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigatio
         return true;
     }
     
-    public void SetProperties(object? sender, CreateUpdateEventArgs e)
-     {
-        Id = e.Dto.Id;
+    public void SetProperties(CreateUpdateEventArgs e)
+    {
+        Id = e.Dto!.Id!;
         TaskTitle = e.Dto.Title;
         Priority = e.Dto.Priority;
-        if(e.Dto.DeadlineDate is not null)
-        {
-            Deadline = e.Dto.DeadlineDate;
-        }
-        else
-        {
-            Deadline = DateTime.Now;
-        }
+        Deadline = e.Dto.DeadlineDate ?? DateTime.Now;
     }    
 
     private async Task UpdateTaskExecuteAsync(object? parameter)
@@ -212,17 +222,24 @@ public class CreateUpdateViewModel(ITaskService<TaskDto> taskService, INavigatio
             Priority = Priority
         };
 
-        var result = await _taskService.UpdateAsync(dto);
+        using IServiceScope scope = _scopeFactory.CreateScope();
+
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+
+        BaseResponse<TaskDto> result = await service.UpdateAsync(dto);
+
+        CreateUpdateEventArgs e = new()
+        {
+            OperationName = "Update",
+            Message = result.Message
+        };
 
         if(result.Value != null)
         {
-            OperationDone?.Invoke(this, new CreateUpdateEventArgs() 
-            { 
-                OperationName = "Update", 
-                Dto = dto,
-                Message = result.Message
-            });
+            e.Dto = result.Value;
         }
+
+        OperationDone?.Invoke(this, e);
 
         _navigationStore.Previous();
     }

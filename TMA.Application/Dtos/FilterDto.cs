@@ -1,6 +1,7 @@
-﻿using TMA.Shared;
+﻿using TMA.Application.Dtos.DtoAttributes;
+using TMA.Shared;
 
-namespace TMA.Infrastructure;
+namespace TMA.Application.Dtos;
 
 public class FilterDto
 {
@@ -8,8 +9,9 @@ public class FilterDto
     public Shared.TaskStatus? Status { get; set; }
     public string? Title { get; set; }
 
-    // not implemented
+    [Date]
     public DateTime? To { get; set; }
+    [Date]
     public DateTime? From { get; set; }
 
     public override string ToString() => $"{Priority} - {Status} - {Title} - {To} - {From}";

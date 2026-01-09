@@ -3,6 +3,8 @@
 public enum TaskStatus
 {
     Pending,
+    InProgress,
     Completed,
+    Cancelled,
     Expired
 }

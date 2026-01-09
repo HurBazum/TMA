@@ -30,7 +30,13 @@ public class TaskViewModel : ViewModelBase
         get => _completed;
         set => Set(ref _completed, value);
     }
-       
+
+    private Shared.TaskStatus _status;
+    public Shared.TaskStatus Status
+    {
+        get => _status;
+        set => Set(ref _status, value);
+    }
 
     private TaskPriority _priority;
     public TaskPriority Priority

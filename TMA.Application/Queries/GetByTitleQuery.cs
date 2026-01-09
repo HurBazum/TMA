@@ -1,3 +1,9 @@
-﻿namespace TMA.Application.Queries;
+﻿using TMA.Application.MediatorFolder;
+using TMA.Application.Dtos;
 
-public record GetByTitleQuery(string Title);
+namespace TMA.Application.Queries;
+
+public class GetByTitleQuery : IQuery<TaskDto>
+{
+    public string Title { get; init; } = null!;
+}

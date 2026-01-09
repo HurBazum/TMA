@@ -1,22 +1,57 @@
-﻿using System.Linq.Expressions;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Windows;
 using System.Windows.Input;
-using TMA.Infrastructure;
+using TMA.Application.Dtos;
+using TMA.Application.Dtos.DtoAttributes;
+using TMA.Application.Others;
+using TMA.Application.Services;
+using TMA.UI.Infrastructure;
 using TMA.UI.Infrastructure.Commands;
 using TMA.UI.Infrastructure.Commands.Base;
+using TMA.UI.Infrastructure.Commands.SpecialCommands;
 using TMA.UI.Infrastructure.EventArguments;
 using TMA.UI.ViewModels.Base;
 
 namespace TMA.UI.ViewModels;
 
-public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
+public class FilterViewModel : ViewModelBase
 {
-    private readonly ITaskService<TaskDto> _taskService = taskService;
+    private readonly IServiceScopeFactory _factory;
 
-    public event EventHandler<FilterDoneEventArgs> SearchIsDone;
+    public event EventHandler<FilterDoneEventArgs>? SearchIsDone;
+
+    public LambdaCommand UniversalDateCmd { get; private set; }
+    public Dictionary<string, PropertyAccessor<DateTime?>> _dates;
+
+    public FilterViewModel(IServiceScopeFactory factory)
+    {
+        _factory = factory;
+
+        _dates = new()
+        {
+            {
+                "From",
+                new PropertyAccessor<DateTime?>()
+                {
+                    Getter = () => From,
+                    Setter = (x) => From = x
+                }
+            },
+            {
+                "To",
+                new PropertyAccessor<DateTime?>()
+                {
+                    Getter = () => To,
+                    Setter = (x) => To = x
+                }
+            }
+        };
+
+        UniversalDateCmd = CommandCreator.CreateDateCmd(_dates);
+    }
 
     #region properties
 
@@ -44,24 +79,74 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
             Set(ref _title, value);
             if(value != null)
             {
-                OnAddedFilterValue(Title);
+                OnAddedFilterValue(Title!);
             }
         }
     }
 
-    private DateTime? _to;
+    private DateTime? _to = DateTime.Today;
     public DateTime? To
     {
         get => _to;
-        set => Set(ref _to, value);
+        set
+        {
+            Set(ref _to, value);
+            OnAddedFilterValue(To!);
+        }
     }
 
-    private DateTime? _from;
+    private DateTime? _from = DateTime.Today;
     public DateTime? From
     {
         get => _from;
-        set => Set(ref _from, value);
+        set
+        {
+            Set(ref _from, value);
+            OnAddedFilterValue(From!);
+        }
     }
+
+    private bool _useTo = false;
+    public bool UseTo
+    {
+        get => _useTo;
+        set => Set(ref _useTo, value);
+    }
+
+    private bool _useFrom = false;
+    public bool UseFrom
+    {
+        get => _useFrom;
+        set => Set(ref _useFrom, value);
+    }
+
+
+    // ?
+    public ObservableCollection<FilterGroup> FilterGroups { get; set; } = 
+        [
+            new()
+            {
+                Header = "Priority",
+                Options =
+                [
+                    new("Priority", "None"),
+                    new("Priority", "Normal"),
+                    new("Priority", "Medium"),
+                    new("Priority", "High")
+                ]},
+
+            new()
+            {
+                Header = "Status",
+                Options =
+                [
+                    new("Status", "None"),
+                    new("Status", "Pending"),
+                    new("Status", "Completed"),
+                    new("Status", "Expired")
+                ]}
+        ];
+
 
 
     #endregion
@@ -70,8 +155,7 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
     #region cmds
 
 
-    private ICommand? _useAllFiltersCmd;
-    public ICommand UseAllFiltersCmd => _useAllFiltersCmd ?? new LambdaCommand(UseAllFiltersCmdExecute, CanUseAllFiltersCmdExecute);
+    public ICommand UseAllFiltersCmd => new LambdaCommand(UseAllFiltersCmdExecute, CanUseAllFiltersCmdExecute);
 
     private bool CanUseAllFiltersCmdExecute(object? parameter) => true;
     private void UseAllFiltersCmdExecute(object? parameter)
@@ -79,8 +163,7 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
         IsAllFilterUse = !IsAllFilterUse;
     }
 
-    private ICommand? _getFilterCmd;
-    public ICommand GetFilterFilter => _getFilterCmd ?? new LambdaCommand(GetFilterCmdExecute, CanGetFilterCmdExecuted);
+    public ICommand GetFilterFilter => new LambdaCommand(GetFilterCmdExecute, CanGetFilterCmdExecuted);
 
     private void GetFilterCmdExecute(object? parameter)
     {
@@ -102,7 +185,7 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
     private bool CanShowFilterCmdExecute(object? parameter) => true;
     private async Task ShowFilterCmdExecute(object? parameter)
     {
-        Dictionary<string, string> dic = new();
+        Dictionary<string, string> dic = [];
 
         FilterDto filterDto = new();
 
@@ -115,8 +198,10 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
             expr(filterDto, separated[0], separated[1]);            
         }
 
-        var response = await _taskService.FilterTaskAsync(filterDto);
-
+        using IServiceScope scope = _factory.CreateScope();
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+        BaseResponse<List<TaskDto>> response = await service.FilterTaskAsync(filterDto);
+        
         IsAllFilterUse = false;
 
         OnFilterDone(response);
@@ -130,7 +215,7 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
         Value = response.Value
     });
         
-    private void OnAddedFilterValue(object propertyValue, [CallerArgumentExpression("propertyValue")]string propertyName = null)
+    private void OnAddedFilterValue(object propertyValue, [CallerArgumentExpression(nameof(propertyValue))]string? propertyName = null)
     {
         if(propertyValue != null)
         {
@@ -143,7 +228,7 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
     private void CheckAndAdd(string filter)
     {
         int underscore = filter.IndexOf('_');
-        var prefix = filter.Substring(0, underscore);
+        var prefix = filter[..underscore];
 
         string? item = Filters.FirstOrDefault(x => x.StartsWith(prefix));
 
@@ -164,40 +249,53 @@ public class FilterViewModel(ITaskService<TaskDto> taskService) : ViewModelBase
 
     private Expression<Action<object, string, object>> FilterInitializer()
     {
-        ParameterExpression dto = System.Linq.Expressions.Expression.Parameter(typeof(object), "d");
-        ParameterExpression propName = System.Linq.Expressions.Expression.Parameter(typeof(string), "n");
-        ParameterExpression propValue = System.Linq.Expressions.Expression.Parameter(typeof(object), "v");
+        ParameterExpression obj = Expression.Parameter(typeof(object), "p");
+        ParameterExpression propName = Expression.Parameter(typeof(string), "n");
+        ParameterExpression newValue = Expression.Parameter(typeof(object), "v");
 
-        MethodCallExpression getDtoTypeCall = System.Linq.Expressions.Expression.Call(dto, typeof(object).GetMethod(nameof(object.GetType))!);
-        MethodCallExpression getDtoPropertyCall = System.Linq.Expressions.Expression.Call(getDtoTypeCall, 
-            typeof(Type).GetMethod(nameof(Type.GetProperty), new[] { typeof(string) })!, propName);
+        // p.GetType()
+        MethodCallExpression getTypeCall = Expression.Call(obj, typeof(object).GetMethod(nameof(object.GetType))!);
 
-        MemberExpression propertyType = System.Linq.Expressions.Expression.Property(getDtoPropertyCall, nameof(PropertyInfo.PropertyType));
+        // p.GetType().GetProperty(n)
+        MethodCallExpression getPropertyCall = Expression.Call(getTypeCall, typeof(Type).GetMethod(nameof(Type.GetProperty), [typeof(string)])!, propName);
 
-        MethodCallExpression getUnderlyingTypeCall = System.Linq.Expressions.Expression.Call(typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType), new[] { typeof(Type) })!
-            , propertyType);
+
+        // property.PropertyType
+        MemberExpression propertyType = Expression.Property(getPropertyCall, nameof(PropertyInfo.PropertyType));
+
+        // Nullable.GetUnderlyingType(property.PropertyType)
+        MethodInfo getUnderlyingType = typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType))!;
+        MethodCallExpression underlyingTypeCall = Expression.Call(getUnderlyingType, propertyType);
+
+        // underlyingType == null ? propertyType : underlyingType
+        BinaryExpression underlyingIsNull = Expression.Equal(underlyingTypeCall, Expression.Constant(null, typeof(Type)));
+        Expression realTargetType = Expression.Condition(underlyingIsNull, propertyType, underlyingTypeCall);
+
+        // realTargetType.IsEnum
+        MemberExpression isEnum = Expression.Property(realTargetType, nameof(Type.IsEnum));
+
+        // (string)v
+        UnaryExpression valueToString = Expression.Convert(newValue, typeof(string));
+
+        // Enum.Parse(realTargetType, (string)v)
+        MethodCallExpression parsedEnum =
+            Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), [typeof(Type), typeof(string)])!, realTargetType, valueToString);
+
+        // (PropertyType)Enum.Parse(...)
+        Expression convertedEnum = Expression.Convert(parsedEnum, typeof(object));
         
-        BinaryExpression checkFoNull = System.Linq.Expressions.Expression.Equal(getUnderlyingTypeCall, System.Linq.Expressions.Expression.Constant(null, typeof(Type)));
+        // Convert.ChangeType(v, propertyType)
+        MethodCallExpression convertedOther =
+            Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), [typeof(object), typeof(Type), typeof(IFormatProvider)])!, 
+            newValue, realTargetType, Expression.Constant(System.Globalization.CultureInfo.CurrentCulture));
 
-        ConditionalExpression getRealType = System.Linq.Expressions.Expression.Condition(checkFoNull, propertyType, getUnderlyingTypeCall);
+        // isEnum ? convertedEnum : convertedOther
+        ConditionalExpression valueExpression = Expression.Condition(isEnum, convertedEnum, convertedOther);
 
-        MemberExpression isEnum = System.Linq.Expressions.Expression.Property(getRealType, nameof(Type.IsEnum));
+        // property.SetValue(p, valueExpression)
+        MethodCallExpression setValueCall = Expression
+            .Call(getPropertyCall, typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue), [typeof(object), typeof(object)])!, obj, valueExpression);
 
-        UnaryExpression convertTo = System.Linq.Expressions.Expression.Convert(propValue, typeof(string));
-
-        MethodCallExpression parsedEnum = System.Linq.Expressions.Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), new[] { typeof(Type), typeof(string) })!,
-            getRealType, convertTo);
-
-        UnaryExpression convertedEnum = System.Linq.Expressions.Expression.Convert(parsedEnum, typeof(object));
-
-        MethodCallExpression parsedOther = System.Linq.Expressions.Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) })!,
-            convertTo, propertyType);
-
-        ConditionalExpression condition = System.Linq.Expressions.Expression.Condition(isEnum, convertedEnum, parsedOther);
-
-        MethodCallExpression setValueCall = System.Linq.Expressions.Expression.Call(getDtoPropertyCall, typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue)
-            , new[] { typeof(object), typeof(object) })!, dto, condition);
-
-        return System.Linq.Expressions.Expression.Lambda<Action<object, string, object>>(setValueCall, dto, propName, propValue);
+        return Expression.Lambda<Action<object, string, object>>(setValueCall, obj, propName, newValue);
     }
 }

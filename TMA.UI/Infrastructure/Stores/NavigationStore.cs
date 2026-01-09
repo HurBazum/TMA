@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using TMA.UI.ViewModels;
-using TMA.UI.ViewModels.Base;
+﻿using TMA.UI.ViewModels.Base;
 
 namespace TMA.UI.Infrastructure.Stores;
 

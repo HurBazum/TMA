@@ -1,67 +1,78 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
+using TMA.Application.Dtos;
+using TMA.Application.MediatorFolder;
 using TMA.Application.Others;
 using TMA.Application.Queries;
+using TMA.Application.Specifications;
+using TMA.Application.Specifications.Aggregator;
+using TMA.Application.Specifications.Attributes;
 using TMA.Domain;
 
 namespace TMA.Application.QueryHandlers;
 
-public class FilterTaskQueryHandler(ITaskRepository repository)
+public class FilterTaskQueryHandler(ITaskRepository repository) : IQueryHandler<FilterTaskQuery, List<TaskDto>>
 {
     private readonly ITaskRepository _repository = repository;
 
-    public List<TaskEntity> Handle(FilterTaskQuery query)
+    // TaskStatus -> List<TaskStatus> change
+    public async Task<List<TaskDto>> HandleAsync(FilterTaskQuery query)
     {
         DomainFilterTaskQuery domainFilter = new()
         {
             Status = query.Status,
             Priority = query.Priority,
-            Title = (!string.IsNullOrEmpty(query.Title)) ? new(query.Title) : null,
+            Title = query.Title,
             From = query.From,
             To = query.To
         };
 
-        var filterExpression = CreateFilterExpression(domainFilter).Compile();
+        Func<TaskEntity?, bool> filterExpression = CreateGeneralExpression(domainFilter).Compile();
 
         IQueryable<TaskEntity?> result = _repository.GetAllAsync();
 
-        IEnumerable<TaskEntity?> filtered = result.Where(filterExpression);
+        IEnumerable<TaskEntity> filtered = result.Where(filterExpression);
 
-        return [.. filtered];
+        List<TaskDto> list = (filtered.Any()) ? [] : [.. (Enumerable.Select(filtered, i => Transformer.ToDto(i)))];
+
+        return await Task.FromResult(list);
     }
 
-    private Expression<Func<TaskEntity, bool>> CreateFilterExpression(DomainFilterTaskQuery query)
-    {
-        ParameterExpression entityParameter = Expression.Parameter(typeof(TaskEntity), "e");
 
-        var expressions = new List<Expression>();
+    private static Expression<Func<TaskEntity, bool>> CreateGeneralExpression(DomainFilterTaskQuery query)
+    {
+        ICollection<ISpecification<TaskEntity>> specifications = [];
 
         foreach(var pi in query.GetType().GetProperties())
         {
-            var piValue = pi.GetValue(query);
+            object? piValue = pi.GetValue(query);
 
             if(piValue == null)
             {
                 continue;
             }
 
-            Type? piUnderlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
+            var attr = pi.GetCustomAttribute<SpecAttribute>();
 
-            ConstantExpression constant = Expression.Constant(piValue, piUnderlyingType);
+            if(attr == null)
+            {
+                continue;
+            }
 
-            MemberExpression entityProperty = Expression.Property(entityParameter, pi.Name);
+            ISpecification<TaskEntity> specification = Activator.CreateInstance(attr.Specification, piValue)! as ISpecification<TaskEntity>
+                ?? throw new Exception($"Cannot create specification of type {attr.Specification.Name}");
 
-            BinaryExpression be = Expression.Equal(entityProperty, constant);
-
-            expressions.Add(be);
+            specifications.Add(specification);
         }
 
-        if(expressions.Count == 0)
+        if(specifications.Count == 0)
         {
-            return Expression.Lambda<Func<TaskEntity, bool>>(Expression.Constant(true), entityParameter);
+            ParameterExpression entityParameter = Expression.Parameter(typeof(TaskEntity), "e");
+            return Expression.Lambda<Func<TaskEntity, bool>>(Expression.Constant(false), entityParameter);
         }
+        
+        AndSpecification<TaskEntity> andSpecification = new([.. specifications]);
 
-        var finalExpression = expressions.Aggregate(Expression.AndAlso);
-
-        return Expression.Lambda<Func<TaskEntity, bool>>(finalExpression, entityParameter);
+        return andSpecification.ToExpression();
     }
 }

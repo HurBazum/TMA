@@ -4,41 +4,82 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:TMA.UI.Views.Partials"
+             xmlns:adds="clr-namespace:TMA.UI.Infrastructure"
+             xmlns:controls="clr-namespace:TMA.UI.Views.Controls"
              mc:Ignorable="d" 
              d:DesignHeight="250" d:DesignWidth="800" d:Background="AliceBlue">
-    <Grid Background="#055987">
+    <Grid Background="#FF76767F">
         <Grid.RowDefinitions>
             <RowDefinition Height="100" />
-            <RowDefinition />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="120" />
         </Grid.RowDefinitions>
 
-        <Grid.Resources>
-            <Style TargetType="{x:Type RadioButton}">
-                <Setter Property="Command" Value="{Binding GetFilterFilter}" />
-            </Style>
-        </Grid.Resources>
-        
         <StackPanel Orientation="Horizontal"
                     Height="70"
                     Grid.Row="0" >
-            <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Width="200" />
-            <Button Style="{StaticResource MinOpBtn}" Content="Search" Command="{Binding UseFilterCmd}" />
-            <Button Style="{StaticResource MinOpBtn}" Content="More" Command="{Binding UseAllFiltersCmd}" />
+            <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                     Width="200"
+                     Style="{StaticResource mytxt}"
+                     Margin="10, 5"
+                     Padding="5"
+                     FontFamily="Bookman Old Style" />
+            <Button Style="{StaticResource MinOpBtn}" 
+                    Content="Search" 
+                    Command="{Binding UseFilterCmd}" />
+            <Button Style="{StaticResource MinOpBtn}" 
+                    Content="More" 
+                    Command="{Binding UseAllFiltersCmd}" />
         </StackPanel>
-        <StackPanel x:Name="MoreFilters" Grid.Row="1" Visibility="{Binding IsAllFilterUse, Converter={StaticResource visibilityConverter}}" Margin="20" >
-            <StackPanel>
-                <TextBlock Text="Priority" TextAlignment="Center" />
-                <RadioButton Content="None" CommandParameter="Priority_None" />
-                <RadioButton Content="Normal" CommandParameter="Priority_Normal" />
-                <RadioButton Content="Mediium" CommandParameter="Priority_Medium" />
-                <RadioButton Content="High" CommandParameter="Priority_High" />
-            </StackPanel>
-            <StackPanel>
-                <TextBlock Text="Status" TextAlignment="Center" />
-                <RadioButton Content="None" CommandParameter="Status_None" />
-                <RadioButton Content="Pending" CommandParameter="Status_Pending" />
-                <RadioButton Content="Completed" CommandParameter="Status_Completed" />
-            </StackPanel>
+
+        <StackPanel x:Name="MoreFilters" 
+                    Grid.Row="1" 
+                    Visibility="{Binding IsAllFilterUse, Converter={StaticResource visibilityConverter}}" 
+                    Margin="10" >
+            <ItemsControl ItemsSource="{Binding FilterGroups}" 
+                          d:IsHidden="True">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type adds:FilterGroup}">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="{Binding Header}" />
+                            <ItemsControl ItemsSource="{Binding Options}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type adds:FilterOption}">
+                                        <RadioButton Content="{Binding Value}"
+                                                     Command="{Binding DataContext.GetFilterFilter, RelativeSource={RelativeSource AncestorType=Grid}}"
+                                                     CommandParameter="{Binding CommandParameter}"                                                     
+                                                     GroupName="{Binding DataContext.Header, RelativeSource={RelativeSource AncestorType=StackPanel, AncestorLevel=2}}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
+        <Grid Grid.Row="2">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+
+            <Grid.Resources>
+                <Style TargetType="{x:Type controls:DateWorker}">
+                    <Setter Property="Cmd" Value="{Binding UniversalDateCmd}" />
+                </Style>
+            </Grid.Resources>
+
+            <StackPanel Margin="10" Grid.Column="0">
+                <controls:DateWorker Header="From"
+                                     Limit="{Binding UseFrom}"
+                                     Date="{Binding From}" />
+            </StackPanel>
+            <StackPanel Margin="10" Grid.Column="1">
+                <controls:DateWorker Header="To"
+                                     Limit="{Binding UseTo}" 
+                                     Date="{Binding To}" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

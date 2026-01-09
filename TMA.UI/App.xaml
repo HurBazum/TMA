@@ -10,16 +10,28 @@
         <ResourceDictionary>
             
             <ResourceDictionary.MergedDictionaries>
+
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Dark.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Button.xaml" />
+
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.DeepPurple.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Secondary/MaterialDesignColor.Amber.xaml" />
+
                 <ResourceDictionary Source="/Resources/Styles/Btns.xaml" />
                 <ResourceDictionary Source="/Resources/Styles/ChckBxs.xaml" />
                 <ResourceDictionary Source="/Resources/Styles/DPicker.xaml" />
                 <ResourceDictionary Source="/Resources/Styles/TxtBlck.xaml" />
                 <ResourceDictionary Source="/Resources/Styles/Lbls.xaml" />
+                <ResourceDictionary Source="/Resources/Styles/TxtBxsDictionary.xaml" />
+                
+                
+                
             </ResourceDictionary.MergedDictionaries>
 
             <conv:PriorityValueConverter x:Key="priorityConverter" />
             <conv:MonthConverter x:Key="monthsConverter" />
             <conv:VisibilityConverter x:Key="visibilityConverter" />
+            <conv:TestMultiConverter x:Key="testConverter" />
 
             <DataTemplate DataType="{x:Type vm:TaskListViewModel}">
                 <v:TaskListView />

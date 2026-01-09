@@ -8,6 +8,7 @@
     </Style>
 
     <Style x:Key="GreenBtn" TargetType="{x:Type Button}" BasedOn="{StaticResource BtnBase}">
+        <Setter Property="FontWeight" Value="Black" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Button}">
@@ -24,9 +25,12 @@
 
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="FontWeight" Value="ExtraBlack" />
+                            <Setter Property="FontWeight" Value="UltraBlack" />
                             <Setter Property="FontSize" Value="13" />
                             <Setter Property="Background" Value="#177899" TargetName="brdr" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" TargetName="prsntr" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -38,14 +42,14 @@
         <Setter Property="Width" Value="100" />
         <Setter Property="Height" Value="45" />
         <Setter Property="Margin" Value="10, 5" />
-        <Setter Property="Foreground" Value="#567845" />
-        <Setter Property="FontWeight" Value="ExtraBold" />
+        <Setter Property="Foreground" Value="#FFD7E0EA" />
+        <Setter Property="FontWeight" Value="DemiBold" />
         <Setter Property="FontSize" Value="17" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Button}">
                     <Border x:Name="brdr"
-                            Background="#589999"
+                            Background="#FF4E63A2"
                             BorderThickness="1"
                             CornerRadius="3"
                             Opacity="0.5">
@@ -58,7 +62,58 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Background" Value="#899999" TargetName="brdr" />
-                            <Setter Property="Foreground" Value="Red" />
+                            <Setter Property="Foreground" Value="#FF922929" />
+                            <Setter Property="FontWeight" Value="ExtraBold" />
+                            <Setter Property="Effect" TargetName="brdr">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="8" 
+                                                      ShadowDepth="4"
+                                                      Color="Black"
+                                                      Opacity="0.6" />
+                                </Setter.Value>
+                            </Setter>                            
+                        </Trigger>
+
+                        <Trigger Property="IsMouseOver" Value="False">
+                            <Setter Property="Effect" TargetName="brdr">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="5" 
+                                                      ShadowDepth="3"
+                                                      Color="Black"
+                                                      Opacity="0.3" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        
+                    </ControlTemplate.Triggers>
+
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="clndrBtn" TargetType="{x:Type Button}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="brdr"
+                            BorderBrush="{TemplateBinding Background}"
+                            BorderThickness="2"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="5"
+                            Opacity="0.8">
+                        <ContentPresenter x:Name="cPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Center" />
+                    </Border>
+                    
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" TargetName="brdr" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Opacity" Value="1" TargetName="brdr" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -66,19 +121,13 @@
         </Setter>
     </Style>
 
-    <Style x:Key="rBtn" TargetType="{x:Type RadioButton}" BasedOn="{StaticResource BtnBase}">
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type RadioButton}">
-                    <Border x:Name="brdr"
-                            Height="{TemplateBinding}"
-                            Width="{TemplateBinding}">
-                        <ContentPresenter x:Name="cPresenter">
-                            
-                        </ContentPresenter>
-                    </Border>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+    <Style x:Key="mnBtn" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+        <Setter Property="Width" Value="100" />
+        <Setter Property="Height" Value="45" />
+        <Setter Property="Margin" Value="10, 5" />
+        <Setter Property="Foreground" Value="#FFD7E0EA" />
+        <Setter Property="FontWeight" Value="DemiBold" />
+        <Setter Property="FontSize" Value="17" />
     </Style>
+    
 </ResourceDictionary>

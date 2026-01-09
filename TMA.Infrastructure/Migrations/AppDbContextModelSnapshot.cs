@@ -15,7 +15,7 @@ namespace TMA.Infrastructure.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.7");
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
 
             modelBuilder.Entity("TMA.Domain.TaskEntity", b =>
                 {
@@ -32,17 +32,41 @@ namespace TMA.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tasks");
+                    b.ToTable("Tasks", (string)null);
+                });
+
+            modelBuilder.Entity("TMA.Domain.TaskEntity", b =>
+                {
+                    b.OwnsOne("TMA.Domain.VOs.Status", "Status", b1 =>
+                        {
+                            b1.Property<string>("TaskEntityId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<DateTime>("ChangedAt")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Status_ChangedAt");
+
+                            b1.Property<string>("Type")
+                                .IsRequired()
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Status_Type");
+
+                            b1.HasKey("TaskEntityId");
+
+                            b1.ToTable("Tasks", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("TaskEntityId");
+                        });
+
+                    b.Navigation("Status")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

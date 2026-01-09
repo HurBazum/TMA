@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\TMA.Domain\TMA.Domain.csproj" />
   </ItemGroup>
 

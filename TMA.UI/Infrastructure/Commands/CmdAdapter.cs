@@ -7,7 +7,6 @@ public class CmdAdapter(IAsyncCommand command) : ICommand
 {
     private readonly IAsyncCommand _asyncCommand = command;
 
-
     public event EventHandler? CanExecuteChanged;
 
     public bool CanExecute(object? parameter) => _asyncCommand.CanExecute(parameter);

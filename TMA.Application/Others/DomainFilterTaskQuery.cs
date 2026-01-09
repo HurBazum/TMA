@@ -1,14 +1,23 @@
-﻿using TMA.Domain.VOs;
+﻿using TMA.Application.Specifications;
+using TMA.Application.Specifications.Attributes;
 using TMA.Shared;
 
 namespace TMA.Application.Others;
 
-internal class DomainFilterTaskQuery
+public class DomainFilterTaskQuery
 {
-    public TaskTitle? Title { get; set; }
+    [Spec(Specification = typeof(TaskTitleSpecification))]
+    public string? Title { get; set; }
+
+    [Spec(Specification = typeof(TaskPrioritySpecification))]
     public TaskPriority? Priority { get; set; }
+
+    [Spec(Specification = typeof(TaskStatusSpecification))]
     public Shared.TaskStatus? Status { get; set; }
 
+    [Spec(Specification = typeof(TaskDeadlineSpecification))]
     public DateTime? To { get; set; }
+
+    [Spec(Specification = typeof(TaskCreatedDateSpecification))]
     public DateTime? From { get; set; }
 }

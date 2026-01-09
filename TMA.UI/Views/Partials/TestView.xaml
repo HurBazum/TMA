@@ -1,14 +1,21 @@
 ﻿<UserControl x:Class="TMA.UI.Views.Partials.TestView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:TMA.UI.Views.Partials"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800" d:Background="Azure">
-    <Grid>
-        <TextBlock Text="{Binding Message}" FontSize="22" FontWeight="ExtraBlack" Foreground="Gainsboro" Padding="10"/>
-        <Button Content="Back" Style="{StaticResource BtnBase}" Command="{Binding ToTaskCmd}" />
+             xmlns:mdt="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:conv ="clr-namespace:TMA.UI.Infrastructure.Converters">
 
-    </Grid>
+    <StackPanel Width="400" Height="200"
+                VerticalAlignment="Center" Margin="20"
+                Background="#FF76767F">
+        <TextBlock Padding="10" Text="Block" x:Name="tb" Tag="{RelativeSource Self}" />
+        <RadioButton Margin="5">
+            <RadioButton.Content>
+                <MultiBinding Converter="{StaticResource testConverter}">
+                    <Binding ElementName="tb" Path="Text" />
+                    <Binding ElementName="rb2" Path="Content" />
+                </MultiBinding>
+            </RadioButton.Content>
+        </RadioButton>
+        <RadioButton Margin="5" Content="second" x:Name="rb2" />
+    </StackPanel>
 </UserControl>

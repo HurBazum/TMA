@@ -1,21 +1,24 @@
 ﻿using TMA.Application.Commands;
+using TMA.Application.Dtos;
+using TMA.Application.MediatorFolder;
+using TMA.Application.Others;
+using TMA.Application.Others.Exceptions;
 
-namespace TMA.Application.CommandHandlers
+namespace TMA.Application.CommandHandlers;
+
+public class ReprioritizeTaskCommandHandler(ITaskRepository repository) : ICommandHandler<ReprioritizeTaskCommand, TaskDto>
 {
-    public class ReprioritizeTaskCommandHandler(ITaskRepository repository)
+    private readonly ITaskRepository _repository = repository;
+
+    public async Task<TaskDto> HandleAsync(ReprioritizeTaskCommand command)
     {
-        private readonly ITaskRepository _repository = repository;
+        var task = await _repository.GetByIdAsync(command.Id)
+            ?? throw new TaskWasnotFoundException($"Задача с id={command.Id.Value} не найдена");
 
-        public async Task Handle(ReprioritizeTaskCommand command)
-        {
-            var task = await _repository.GetByIdAsync(command.Id);
+        task.Reprioritize(command.Priority);
+        
+        task = await _repository.UpdateTaskAsync(task);
 
-            if(task != null)
-            {
-                task.Reprioritize(command.Priority);
-
-                await _repository.UpdateTaskAsync(task);
-            }
-        }
+        return Transformer.ToDto(task);
     }
 }

@@ -5,8 +5,8 @@ namespace TMA.Application;
 
 public interface ITaskRepository
 {
-    public Task AddTaskAsync(TaskEntity taskEntity);
-    public Task UpdateTaskAsync(TaskEntity taskEntity);
+    public Task<TaskEntity> AddTaskAsync(TaskEntity taskEntity);
+    public Task<TaskEntity> UpdateTaskAsync(TaskEntity taskEntity);
     public Task<TaskEntity?> GetByIdAsync(TaskId id);
     public IQueryable<TaskEntity?> GetAllAsync();
 }

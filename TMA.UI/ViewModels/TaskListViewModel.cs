@@ -1,15 +1,18 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using MaterialDesignThemes.Wpf;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Windows.Input;
 using System.Windows.Threading;
-using TMA.Infrastructure;
+using TMA.Application.Dtos;
+using TMA.Application.Others;
+using TMA.Application.Others.Args;
+using TMA.Application.Services;
 using TMA.UI.Infrastructure.Commands;
 using TMA.UI.Infrastructure.Commands.Base;
 using TMA.UI.Infrastructure.EventArguments;
 using TMA.UI.Infrastructure.Stores;
-using TMA.UI.Infrastructure.Transform;
 using TMA.UI.Models;
 using TMA.UI.ViewModels.Base;
 
@@ -17,19 +20,35 @@ namespace TMA.UI.ViewModels;
 
 public class TaskListViewModel : ViewModelBase
 {
-    private readonly INavigationStore _navigationStore;
-    private readonly ITaskService<TaskDto> _taskService;
-    public FilterViewModel FilterViewModel { get; }
-    public event EventHandler<CreateUpdateEventArgs>? UpdateTask;
+    private readonly CancellationTokenSource _cts = new();
 
-    public TaskListViewModel(INavigationStore navigationStore, ITaskService<TaskDto> taskService)
+    private readonly INavigationStore _navigationStore;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly CheckTaskService _checkTaskService;
+    public FilterViewModel FilterViewModel { get; }
+    public event Action<CreateUpdateEventArgs>? UpdateTask;
+
+    public ISnackbarMessageQueue MessageQueue { get; set; } = new SnackbarMessageQueue();
+
+    public TaskListViewModel(
+        INavigationStore navigationStore,
+        FilterViewModel filterViewModel,
+        IServiceScopeFactory scopeFactory,
+        CheckTaskService checkTaskService)
     {
         _navigationStore = navigationStore;
-        _taskService = taskService;
-        FilterViewModel = App.Provider.GetRequiredService<FilterViewModel>();
+        _scopeFactory = scopeFactory;
+
+        FilterViewModel = filterViewModel;
         FilterViewModel.SearchIsDone += ChangeCollection;
         Dispatcher.CurrentDispatcher.BeginInvoke(() => InitializeCollection());
+
+        _checkTaskService = checkTaskService;
+        _checkTaskService.ExpiredTask += DeleteExpiredTVMs;
+        Dispatcher.CurrentDispatcher.InvokeAsync(() => _checkTaskService.CheckTasksDeadlineAsync(_cts.Token));        
     }
+
+    #region properties
 
     private string? _message;
     public string? Message
@@ -62,21 +81,20 @@ public class TaskListViewModel : ViewModelBase
 
     public ObservableCollection<TaskViewModel> TVMs { get; set; } = [];
 
+    #endregion
 
     #region cmds
 
 
-    private IAsyncCommand filterTaskAsyncCmd => new AsyncCommand(FilterTVMCmdExecute, CanFilterTVMCmdExecute);
+    private IAsyncCommand FilterTaskAsyncCmd => new AsyncCommand(FilterTVMCmdExecute, CanFilterTVMCmdExecute);
 
-    private ICommand? _createTVMCmd;
-    public ICommand CreateTVMCmd => _createTVMCmd ?? new LambdaCommand(CreateTVMCmdExecuted, CanCreateTVMCmdExecute);
+    public ICommand CreateTVMCmd => new LambdaCommand(CreateTVMCmdExecuted, CanCreateTVMCmdExecute);
 
-    private CmdAdapter FilterTMVAdapt => new(filterTaskAsyncCmd);
+    private CmdAdapter FilterTMVAdapt => new(FilterTaskAsyncCmd);
 
     public LambdaCommand FilterTVMCmd => new(FilterTMVAdapt.Execute, FilterTMVAdapt.CanExecute);
 
-    private ICommand? _setFilterValueCmd;
-    public ICommand SetFilterValueCmd => _setFilterValueCmd ?? new LambdaCommand(SetFilterValueCmdExecute, parameter => true);
+    public ICommand SetFilterValueCmd => new LambdaCommand(SetFilterValueCmdExecute, parameter => true);
 
     private void SetFilterValueCmdExecute(object? parameter)
     {
@@ -102,7 +120,7 @@ public class TaskListViewModel : ViewModelBase
 
     private void CreateTVMCmdExecuted(object? parameter)
     {
-        var nextPage = App.Provider.GetRequiredService<CreateUpdateViewModel>();
+        var nextPage = App.Host.Services.GetRequiredService<CreateUpdateViewModel>();
 
         nextPage.OperationDone += OnTaskOperationDone;
 
@@ -112,7 +130,7 @@ public class TaskListViewModel : ViewModelBase
     private bool CanFilterTVMCmdExecute(object? parameter) => true;
     private async Task FilterTVMCmdExecute(object? parameter)
     {
-        Dictionary<string, string> dic = new();
+        Dictionary<string, string> dic = [];
 
         foreach(string filter in Filters)
         {
@@ -125,29 +143,29 @@ public class TaskListViewModel : ViewModelBase
 
         var setter = SetFilterProperty().Compile();
 
-        bool isFiltered = false;
         foreach(var kvp in dic)
         {
             if(kvp.Value != "None")
             {
-                isFiltered = true;
                 setter(taskDto, kvp.Key, kvp.Value);
             }
         }
 
-        var response = await _taskService.FilterTaskAsync(taskDto);
+        using IServiceScope scope = _scopeFactory.CreateScope();
 
-        Message = response.Message;
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
 
-        HasMessage = true;
+        BaseResponse<List<TaskDto>> response = await service.FilterTaskAsync(taskDto);
+
+        ShowMessage(response.Message);
 
         var filteredTVMs = response.Value;
 
         List<TaskViewModel> newTVMS = [];
 
-        foreach(var filteredTvm in filteredTVMs)
+        foreach(var filteredTvm in filteredTVMs!)
         {
-            newTVMS.Add(Transformer.ToModel(filteredTvm));
+            newTVMS.Add(Infrastructure.Transform.Transformer.ToModel(filteredTvm));
         }
 
         TVMs = new(newTVMS);
@@ -158,16 +176,15 @@ public class TaskListViewModel : ViewModelBase
 
     private void OnTaskOperationDone(object? sender, CreateUpdateEventArgs e)
     {
-        Message = e.Message;
-        HasMessage = true;
+        ShowMessage(e.Message!);
         if(e.OperationName == "Add")
         {
-            TVMs.Add(Transformer.ToModel(e.Dto));
+            TVMs.Add(Infrastructure.Transform.Transformer.ToModel(e.Dto!));
         }
         if(e.OperationName == "Update")
         {
-            var tvm = TVMs.First(x => x.Id == e.Dto.Id);
-            if(e.Dto.DeadlineDate is not null)
+            var tvm = TVMs.First(x => x.Id == e.Dto!.Id);
+            if(e.Dto!.DeadlineDate is not null)
             {
                 tvm.Deadline = e.Dto.DeadlineDate;
             }
@@ -176,14 +193,12 @@ public class TaskListViewModel : ViewModelBase
         }
     }
 
-    private ICommand? _updateTaskCmd;
-    public ICommand UpdateTaskCmd => _updateTaskCmd ?? new LambdaCommand(UpdateTaskExecuted, CanUpdateTaskCmdExecute);
+    public ICommand UpdateTaskCmd => new LambdaCommand(UpdateTaskExecuted, CanUpdateTaskCmdExecute);
 
     private bool CanUpdateTaskCmdExecute(object? parameter)
     {
-        var tvm = parameter as TaskViewModel;
-
-        if(tvm is null || tvm.Completed)
+        if(parameter is not TaskViewModel tvm 
+            || tvm.Status != Shared.TaskStatus.Pending)
         {
             return false;
         }
@@ -195,28 +210,24 @@ public class TaskListViewModel : ViewModelBase
     {
         var tvm = parameter as TaskViewModel;
 
-        var nextPage = App.Provider.GetRequiredService<CreateUpdateViewModel>();
+        var nextPage = App.Host.Services.GetRequiredService<CreateUpdateViewModel>();
 
         nextPage.OperationDone += OnTaskOperationDone;
 
         UpdateTask += nextPage.SetProperties;
 
-        UpdateTask?.Invoke(this, new () 
+        UpdateTask?.Invoke(new () 
         {            
-            Dto = Transformer.ToDto(tvm)   
+            Dto = Infrastructure.Transform.Transformer.ToDto(tvm!)   
         });
 
         _navigationStore.Next(nextPage);
     }
-
-    private ICommand? _completeTaskCmd;
-    public ICommand CompleteTaskCmd => _completeTaskCmd ?? new LambdaCommand(CompleteTaskCmdExecute, CanCompleteTaskCmdExecute);
+    public ICommand CompleteTaskCmd => new LambdaCommand(CompleteTaskCmdExecute, CanCompleteTaskCmdExecute);
 
     private bool CanCompleteTaskCmdExecute(object? parameter)
     {
-        var tvm = parameter as TaskViewModel;
-
-        if(tvm.Completed == true)
+        if(parameter is not TaskViewModel tvm || tvm.Status != Shared.TaskStatus.Pending)
         {
             return false;
         }
@@ -225,107 +236,129 @@ public class TaskListViewModel : ViewModelBase
 
     private async void CompleteTaskCmdExecute(object? parameter)
     {
-        var tvm = parameter as TaskViewModel;
+        TaskViewModel tvm = parameter as TaskViewModel;
 
-        tvm.Completed = true;
+        tvm.Status = Shared.TaskStatus.Completed;
 
-        var dto = Transformer.ToDto(tvm);
+        TaskDto dto = Infrastructure.Transform.Transformer.ToDto(tvm);
 
-        var result = await _taskService.UpdateAsync(dto);
+        using IServiceScope scope = _scopeFactory.CreateScope();
 
-        Message = result.Message;
-        HasMessage = true;
+        ITaskService<TaskDto> service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+
+        BaseResponse<TaskDto> result = await service.UpdateAsync(dto);
+
+        ShowMessage(result.Message);
     }
 
     #endregion
 
+
+    #region prvt methods
+
+    public void DeleteExpiredTVMs(object? sender, ExpiredTaskEventArgs e)
+    {
+        TaskViewModel tvm = TVMs.Single(x => x.Id == e.DtoId);
+
+        TVMs.Remove(tvm);
+        OnPropertyChanged(nameof(TVMs));
+
+        ShowMessage(e.Message);
+    }
+
     private void ChangeCollection(object? sender, FilterDoneEventArgs e)
     {
-        var tvms = Transformer.ToModel(e.Value);
+        if(e.Value is not null)
+        {
+            var tvms = Infrastructure.Transform.Transformer.ToModel(e.Value!);
 
-        TVMs = new(tvms);
+            TVMs = new(tvms);
+        }
+        else
+        {
+            TVMs.Clear();
+        }
+
         OnPropertyChanged(nameof(TVMs));
-        Message = e.Message;
-        HasMessage = true;
+
+        ShowMessage(e.Message!);
     }
 
     private async Task InitializeCollection()
     {
-        var result = await _taskService.GetAllAsync();
+        FilterDto filter = new()
+        {
+            Status = Shared.TaskStatus.Pending
+        };
+
+        using IServiceScope scope = _scopeFactory.CreateScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<ITaskService<TaskDto>>();
+
+        var result = await service.FilterTaskAsync(filter);
 
         if(result.Value != null)
         {
             foreach(var item in result.Value)
             { 
-                TVMs.Add(Transformer.ToModel(item));
+                TVMs.Add(Infrastructure.Transform.Transformer.ToModel(item));
             }
+
+            ShowMessage("Задачи успешно получены");
         }
     }
 
     private Expression<Action<object, string, object>> SetFilterProperty()
     {
-        ParameterExpression obj = System.Linq.Expressions.Expression.Parameter(typeof(object), "p");
-        ParameterExpression propName = System.Linq.Expressions.Expression.Parameter(typeof(string), "n");
-        ParameterExpression newValue = System.Linq.Expressions.Expression.Parameter(typeof(object), "v");
+        ParameterExpression obj = Expression.Parameter(typeof(object), "p");
+        ParameterExpression propName = Expression.Parameter(typeof(string), "n");
+        ParameterExpression newValue = Expression.Parameter(typeof(object), "v");
 
         // p.GetType()
-        MethodCallExpression getTypeCall =
-            System.Linq.Expressions.Expression.Call(obj, typeof(object).GetMethod(nameof(object.GetType))!);
+        MethodCallExpression getTypeCall = Expression.Call(obj, typeof(object).GetMethod(nameof(object.GetType))!);
 
         // p.GetType().GetProperty(n)
-        MethodCallExpression getPropertyCall =
-            System.Linq.Expressions.Expression.Call(getTypeCall,
-                typeof(Type).GetMethod(nameof(Type.GetProperty), new[] { typeof(string) })!,
-                propName);
+        MethodCallExpression getPropertyCall = Expression.Call(getTypeCall, typeof(Type).GetMethod(nameof(Type.GetProperty), [typeof(string)])!, propName);
 
         // property.PropertyType
-        MemberExpression propertyType =
-            System.Linq.Expressions.Expression.Property(getPropertyCall, nameof(PropertyInfo.PropertyType));
+        MemberExpression propertyType = Expression.Property(getPropertyCall, nameof(PropertyInfo.PropertyType));
 
         // Nullable.GetUnderlyingType(property.PropertyType)
         MethodInfo getUnderlyingType = typeof(Nullable).GetMethod(nameof(Nullable.GetUnderlyingType))!;
-        MethodCallExpression underlyingTypeCall =
-            System.Linq.Expressions.Expression.Call(getUnderlyingType, propertyType);
+        MethodCallExpression underlyingTypeCall = Expression.Call(getUnderlyingType, propertyType);
 
         // underlyingType == null ? propertyType : underlyingType
-        BinaryExpression underlyingIsNull =
-             System.Linq.Expressions.Expression.Equal(underlyingTypeCall, System.Linq.Expressions.Expression.Constant(null, typeof(Type)));
-        System.Linq.Expressions.Expression realTargetType =
-            System.Linq.Expressions.Expression.Condition(underlyingIsNull, propertyType, underlyingTypeCall);
+        BinaryExpression underlyingIsNull = Expression.Equal(underlyingTypeCall, Expression.Constant(null, typeof(Type)));
+        Expression realTargetType = Expression.Condition(underlyingIsNull, propertyType, underlyingTypeCall);
 
         // realTargetType.IsEnum
-        MemberExpression isEnum =
-            System.Linq.Expressions.Expression.Property(realTargetType, nameof(Type.IsEnum));
+        MemberExpression isEnum = Expression.Property(realTargetType, nameof(Type.IsEnum));
 
         // (string)v
-        UnaryExpression valueToString =
-            System.Linq.Expressions.Expression.Convert(newValue, typeof(string));
+        UnaryExpression valueToString = Expression.Convert(newValue, typeof(string));
 
         // Enum.Parse(realTargetType, (string)v)
         MethodCallExpression parsedEnum =
-            System.Linq.Expressions.Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), new[] { typeof(Type), typeof(string) })!,
-                            realTargetType, valueToString);
+            Expression.Call(typeof(Enum).GetMethod(nameof(Enum.Parse), [typeof(Type), typeof(string)])!, realTargetType, valueToString);
 
         // (PropertyType)Enum.Parse(...)
-        System.Linq.Expressions.Expression convertedEnum =
-            System.Linq.Expressions.Expression.Convert(parsedEnum, typeof(object));
+        Expression convertedEnum = Expression.Convert(parsedEnum, typeof(object));
 
         // Convert.ChangeType(v, propertyType)
         MethodCallExpression convertedOther =
-            System.Linq.Expressions.Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) })!,
-                            newValue, propertyType);
+            Expression.Call(typeof(Convert).GetMethod(nameof(Convert.ChangeType), [typeof(object), typeof(Type)])!, newValue, propertyType);
 
         // isEnum ? convertedEnum : convertedOther
-        ConditionalExpression valueExpression =
-            System.Linq.Expressions.Expression.Condition(isEnum, convertedEnum, convertedOther);
+        ConditionalExpression valueExpression = Expression.Condition(isEnum, convertedEnum, convertedOther);
 
         // property.SetValue(p, valueExpression)
-        MethodCallExpression setValueCall =
-            System.Linq.Expressions.Expression.Call(getPropertyCall,
-                typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue),
-                                               new[] { typeof(object), typeof(object) })!,
-                obj, valueExpression);
+        MethodCallExpression setValueCall = Expression
+            .Call(getPropertyCall, typeof(PropertyInfo).GetMethod(nameof(PropertyInfo.SetValue), [typeof(object), typeof(object)])!, obj, valueExpression);
 
-        return System.Linq.Expressions.Expression.Lambda<Action<object, string, object>>(setValueCall, obj, propName, newValue);
+        return Expression.Lambda<Action<object, string, object>>(setValueCall, obj, propName, newValue);
     }
+
+    private void ShowMessage(string message) => App.Current.Dispatcher.InvokeAsync(() => MessageQueue.Enqueue(message));
+
+    #endregion
 }

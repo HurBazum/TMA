@@ -1,5 +1,11 @@
-﻿using TMA.Domain.VOs;
+﻿using TMA.Application.Dtos;
+using TMA.Application.MediatorFolder;
+using TMA.Domain.VOs;
 
 namespace TMA.Application.Commands;
 
-public record RescheduleTaskCommand(TaskId Id, DateTime? NewDeadline);
+public class RescheduleTaskCommand(TaskId id, DateTime? newDeadline) : ICommand<TaskDto>
+{
+    public TaskId Id { get; } = id;
+    public DateTime? NewDeadline { get; } = newDeadline;
+}
